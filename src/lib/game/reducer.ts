@@ -226,7 +226,7 @@ function replay(actions: StoredGameAction[]): GameProjection {
         }
 
         case 'CONTRACT_CHOSEN': {
-          const pId = action.payload.actorId;
+          const pId = action.actorId;
           const { contractId } = action.payload;
           
           // Ensure it's this player's turn

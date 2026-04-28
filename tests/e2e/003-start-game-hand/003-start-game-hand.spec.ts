@@ -6,6 +6,10 @@ test.setTimeout(30000);
 
 async function normalizeRandomGameContent(page: Page) {
   await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+
     document.querySelectorAll('.market-area .card .value').forEach((element) => {
       element.textContent = element.textContent?.includes('pts') ? '0 pts' : '0';
     });
@@ -30,6 +34,21 @@ async function normalizeRandomGameContent(page: Page) {
       });
     });
   });
+}
+
+async function normalizeContractCounts(page: Page) {
+  await page.evaluate(() => {
+    document.querySelectorAll('.stats span').forEach((element) => {
+      if (element.textContent?.startsWith('Con:')) {
+        element.textContent = 'Con: #';
+      }
+    });
+  });
+}
+
+async function pageWithContractTurn(hostPage: Page, guestPage: Page) {
+  const hostHasTurn = await hostPage.getByRole('button', { name: /^Choose / }).first().isVisible();
+  return hostHasTurn ? hostPage : guestPage;
 }
 
 test('started game shows the local player hand', async ({ browser, page }, testInfo) => {
@@ -112,6 +131,11 @@ test('started game shows the local player hand', async ({ browser, page }, testI
   await expect(guestMovieCards).toHaveCount(6);
   await guestPage.locator('.hand-area .card.movie.playable').first().click();
 
+  await expect(page.getByText('Phase: contract auction')).toBeVisible();
+  await expect(page.getByText('BO: 1')).toHaveCount(2);
+  await expect(page.getByText('Rev: 1')).toHaveCount(2);
+  const contractPickerPage = await pageWithContractTurn(page, guestPage);
+
   await normalizeRandomGameContent(page);
 
   await tester.step('contract-auction', {
@@ -129,6 +153,28 @@ test('started game shows the local player hand', async ({ browser, page }, testI
           await expect(page.getByText('BO: 1')).toHaveCount(2);
           await expect(page.getByText('Rev: 1')).toHaveCount(2);
           await normalizeRandomGameContent(page);
+        },
+      },
+    ],
+  });
+
+  await contractPickerPage.getByRole('button', { name: /^Choose / }).first().click();
+
+  await tester.step('contract-picked', {
+    description: 'Current contract picker claims a contract',
+    verifications: [
+      {
+        spec: 'A player receives the selected contract',
+        check: async () => {
+          await expect(page.getByText('Con: 1')).toHaveCount(1);
+        },
+      },
+      {
+        spec: 'The remaining contract choices stay available for the next picker',
+        check: async () => {
+          await expect(page.locator('.market-area .card.contract')).toHaveCount(2);
+          await normalizeRandomGameContent(page);
+          await normalizeContractCounts(page);
         },
       },
     ],

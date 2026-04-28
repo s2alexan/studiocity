@@ -28,3 +28,12 @@ Starting a game deals a private hand and renders real Studio City movie cards fo
 - [x] The round advances to the contract auction phase
 - [x] Both players received box office and review cards
 
+## Current contract picker claims a contract
+
+![Current contract picker claims a contract](./screenshots/003-contract-picked.png)
+
+### Verifications
+
+- [x] A player receives the selected contract
+- [x] The remaining contract choices stay available for the next picker
+

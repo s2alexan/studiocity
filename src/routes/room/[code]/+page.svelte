@@ -123,10 +123,15 @@
 
   async function handleChooseContract(contractId: string) {
     if (!isGameCode(data.code)) return;
-    if (projection.contractPickOrder[0] !== getLocalPlayerId()) return;
+    if (projection.contractPickOrder[0] !== getLocalPlayerId()) {
+      error = "It's not your turn to pick a contract yet.";
+      return;
+    }
+    error = '';
     try {
       const { db } = getFirebaseServices();
-      await chooseContract(db, data.code, getLocalPlayerId(), projection.round, contractId);
+      const latestActionAt = store.getState().game.actions.at(-1)?.at ?? Date.now();
+      await chooseContract(db, data.code, getLocalPlayerId(), projection.round, contractId, latestActionAt);
     } catch (caught) {
       error = caught instanceof Error ? caught.message : 'Could not choose contract.';
     }
@@ -219,13 +224,17 @@
               {#each projection.market.contracts as cId}
                 {@const c = getContractCard(cId)}
                 {@const canPick = projection.phase === 'contract_auction' && projection.contractPickOrder[0] === localPlayerId}
-                <!-- svelte-ignore a11y_click_events_have_key_events -->
-                <!-- svelte-ignore a11y_no_static_element_interactions -->
-                <div class="card contract {canPick ? 'pickable' : ''}" onclick={() => canPick && handleChooseContract(cId)}>
+                <button
+                  type="button"
+                  class="card contract {canPick ? 'pickable' : ''}"
+                  disabled={!canPick}
+                  aria-label={canPick ? `Choose ${c.title}` : `${c.title} is not available until your contract turn`}
+                  onclick={() => handleChooseContract(cId)}
+                >
                   <strong>{c.title}</strong>
                   <span class="value">{c.value} pts</span>
                   <span class="desc">{c.description}</span>
-                </div>
+                </button>
               {/each}
             </div>
           </div>
@@ -381,6 +390,9 @@
 
   .card {
     background: #2a2a2a;
+    border: 0;
+    color: inherit;
+    font: inherit;
     border-radius: 12px;
     padding: 1rem;
     width: 120px;
@@ -392,6 +404,10 @@
     text-align: center;
     box-shadow: 0 4px 6px rgba(0,0,0,0.3);
     transition: transform 0.2s;
+  }
+
+  .card:disabled {
+    cursor: not-allowed;
   }
 
   .card.movie {

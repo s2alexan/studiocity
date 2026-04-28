@@ -117,11 +117,18 @@ export async function claimSeat(db: Firestore, gameCode: GameCode, actorId: Play
   } satisfies GameAction);
 }
 
-export async function chooseContract(db: Firestore, gameCode: GameCode, actorId: PlayerId, round: number, contractId: string) {
+export async function chooseContract(
+  db: Firestore,
+  gameCode: GameCode,
+  actorId: PlayerId,
+  round: number,
+  contractId: string,
+  afterAt: number,
+) {
   const actionsRef = collection(doc(db, 'game', gameCode), 'actions');
   await addDoc(actionsRef, {
     type: 'CONTRACT_CHOSEN',
-    at: Date.now(),
+    at: Math.max(Date.now(), afterAt + 1),
     actorId,
     payload: { round, contractId }
   } satisfies GameAction);
