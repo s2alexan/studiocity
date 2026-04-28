@@ -73,6 +73,15 @@
 >
 > Write a readme and a vision for this project summarizing the latest rules, and make a github repo called studiocity to contain these
 
+### Verbatim Prompt
+
+> A few updates:
+> - movie cards have ranks 0-30
+> - do not support tablet
+> - remove version notes from readme
+>
+> In general we want to do everything via PRs, make a note of that in agents.md and put up a PR
+
 ### Setup Notes
 
 - Goal: create a reproducible TypeScript PWA game project using a Nix flake for the development environment.
@@ -92,6 +101,10 @@
 - Added `VISION.md` describing the PWA product direction and near-term milestones.
 - Created private GitHub repository: `https://github.com/s2alexan/studiocity`.
 - Pushed the initial `main` branch to GitHub.
+- Updated docs to use movie ranks 0-30.
+- Removed tablet support from the product vision.
+- Removed version notes from `README.md`.
+- Added `AGENTS.md` with a PR-first workflow note.
 
 ### Lessons Learned
 

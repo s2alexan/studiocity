@@ -8,7 +8,7 @@ Studio City should become a fast, legible, and replayable PWA adaptation of the 
 - Make every round's three contests easy to scan: box office, reviews, then contracts.
 - Keep contract conditions visible and explain why each contract is complete or incomplete.
 - Support 2-5 players cleanly.
-- Work as an installable PWA on desktop, tablet, and mobile.
+- Work as an installable PWA on desktop and mobile.
 - Keep the rules and card data versioned so future balance iterations can be tested and reproduced.
 
 ## Experience Principles

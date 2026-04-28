@@ -16,7 +16,7 @@ Rules target: **Studio City (triple auction) v10**
 
 108 cards:
 
-- 31 movie cards. Each movie has a rank from 1-40 in three categories: box office, reviews, and contracts. The three ranks always add to 45.
+- 31 movie cards. Each movie has a rank from 0-30 in three categories: box office, reviews, and contracts. The three ranks always add to 45.
 - 25 box office cards with 1-4 bills. Cards with 3 or 4 bills are blockbusters.
 - 25 review cards with 1-4 stars. Cards with 3 or 4 stars are loved.
 - 27 contract cards with values from 3-9.
@@ -75,18 +75,6 @@ Scoring:
 
 The player with the most points wins.
 
-## Version Notes
-
-### v10
-
-- Contract values were balanced using Monte Carlo simulation so bill-adjusted expected value is higher for higher-valued contracts.
-
-### v8
-
-- Added two extra contract cards.
-- Contract display changed so players reveal enough contracts to have one more than the number of players.
-- Leftover contracts are not discarded between rounds.
-
 ## Development
 
 This repository uses a Nix flake for a reproducible development shell and Bun for TypeScript package management.
@@ -102,4 +90,3 @@ The current dev shell provides:
 - Bun
 - GitHub CLI
 - Git
-
