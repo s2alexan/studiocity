@@ -2,6 +2,8 @@
 
 This project uses Playwright for end-to-end testing. The process is modeled after `anicolao/food` and `anicolao/chess-tt`: tests are deterministic, visual, and self-documenting.
 
+Studio City E2E tests run against Firebase emulators. The Playwright web server command builds Cloud Functions, starts the Firestore and Functions emulators, then serves the SvelteKit app with `VITE_USE_FIREBASE_EMULATORS=true`.
+
 ## Philosophy: Zero-Pixel Tolerance
 
 Studio City is a card game, so visible state is the player experience. Layout drift, missing cards, or incorrect table state should fail loudly.

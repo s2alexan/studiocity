@@ -19,6 +19,7 @@
             bun
             gh
             git
+            jdk21
           ];
 
           shellHook = ''
@@ -26,6 +27,7 @@
             echo "bun: $(bun --version)"
             echo "gh: $(gh --version | head -n 1)"
             echo "git: $(git --version)"
+            echo "java: $(java -version 2>&1 | head -n 1)"
           '';
         };
       }

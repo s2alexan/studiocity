@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
+import { sveltekit } from '@sveltejs/kit/vite';
 
 export default defineConfig({
-  base: process.env.PUBLIC_BASE_PATH ?? '/studiocity/',
+  plugins: [sveltekit()],
 });

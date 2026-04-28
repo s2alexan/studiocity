@@ -93,11 +93,11 @@ Vite-friendly names:
 - `VITE_FIREBASE_APP_ID`
 - `VITE_FIREBASE_MEASUREMENT_ID`
 
-Still needed before CI can deploy Firebase rules or functions:
+Deployment credential:
 
-- a deploy credential such as `FIREBASE_SERVICE_ACCOUNT` or an equivalent workload identity setup.
+- `FIREBASE_SERVICE_ACCOUNT` has been added for CI deployment.
 
-The web config values are enough to initialize the frontend SDK. They are not enough to deploy Firestore rules or Cloud Functions.
+The web config values initialize the frontend SDK. The service-account credential enables CI to deploy Firestore rules and Cloud Functions.
 
 ## Room Model
 
@@ -261,14 +261,14 @@ Existing CI should continue to:
 - deploy GitHub Pages PR previews,
 - deploy GitHub Pages production on `main`.
 
-Firebase CI should be added when implementation begins:
+Firebase CI now:
 
 - validate Firestore rules on PRs,
 - build Cloud Functions on PRs,
-- run rules/functions tests on PRs,
+- run emulator-backed E2E tests on PRs,
 - deploy rules/functions on `main`.
 
-Deployment from CI is blocked until a Firebase deploy credential is added to GitHub secrets.
+Rules/functions deployment runs from `main` using `FIREBASE_SERVICE_ACCOUNT`.
 
 ## Config Script Requirement
 

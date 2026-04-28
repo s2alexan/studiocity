@@ -1,0 +1,45 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isGameCode(gameCode) {
+      return gameCode.matches('^[A-Z]{4}$');
+    }
+
+    function isUserInputAction(data) {
+      return data.keys().hasOnly(['type', 'at', 'actorId', 'payload'])
+        && data.type in ['ROOM_CREATED', 'PLAYER_JOINED']
+        && data.at is number
+        && data.actorId is string
+        && data.payload is map;
+    }
+
+    match /game/{gameCode} {
+      allow read: if isGameCode(gameCode);
+      allow create: if isGameCode(gameCode)
+        && request.resource.data.keys().hasOnly(['gameCode', 'createdAt', 'version'])
+        && request.resource.data.gameCode == gameCode;
+      allow update, delete: if false;
+
+      match /actions/{actionId} {
+        allow read: if isGameCode(gameCode);
+        allow create: if isGameCode(gameCode)
+          && isUserInputAction(request.resource.data);
+        allow update, delete: if false;
+      }
+
+      match /players/{playerId} {
+        allow read: if isGameCode(gameCode);
+        allow create, update: if isGameCode(gameCode)
+          && request.resource.data.keys().hasOnly(['playerId', 'name', 'joinedAt'])
+          && request.resource.data.playerId == playerId
+          && request.resource.data.name is string;
+        allow delete: if false;
+      }
+
+      match /private/{playerId} {
+        allow read, write: if false;
+      }
+    }
+  }
+}

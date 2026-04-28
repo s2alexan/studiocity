@@ -130,6 +130,10 @@
 > const app = initializeApp(firebaseConfig);
 > const analytics = getAnalytics(app);
 
+### Verbatim Prompt
+
+> we just put a studio-city-service-account.json file in ~/Downloads that you can put in github secrets, and we merged the PR for the MVP design. Implement it, being sure that the e2e tests work against firebase emulators
+
 ### Setup Notes
 
 - Goal: create a reproducible TypeScript PWA game project using a Nix flake for the development environment.
@@ -173,6 +177,13 @@
 - Added Firebase web configuration values to GitHub Actions secrets in `FIREBASE_*`, `VITE_FIREBASE_*`, and `FIREBASE_CONFIG_JSON` forms.
 - Noted that Firebase rules/functions deployment still needs a deploy credential such as `FIREBASE_SERVICE_ACCOUNT` or workload identity.
 - Reworked `MVP_DESIGN.md` into a v0.1 design document.
+- Added `FIREBASE_SERVICE_ACCOUNT` to GitHub Actions secrets from `~/Downloads/studio-city-service-account.json` without printing the credential.
+- Converted the frontend scaffold to SvelteKit with vanilla Svelte CSS.
+- Added Firebase config, Firestore rules, Firebase emulator config, and a minimal Cloud Function.
+- Added Redux-based replay of Firestore action documents for the room UI.
+- Updated E2E tests to launch Firebase emulators and verify the room listener flow against Firestore.
+- Added a `scripts/set-firebase-secrets.mjs` helper for turning Firebase config stanzas into GitHub secrets.
+- Updated CI to build Firebase Functions for tests, run E2E against emulators, and deploy Firestore rules/functions from `main` using `FIREBASE_SERVICE_ACCOUNT`.
 
 ### Lessons Learned
 
@@ -181,3 +192,26 @@
 - GitHub CLI browser authentication should also run in a visible Terminal window when the hidden Codex tool session cannot render or respond cleanly to interactive prompts.
 - The `anicolao/food` and `anicolao/chess-tt` E2E process centers on deterministic Playwright tests, numbered scenario folders, a unified `TestStepHelper`, generated README files, and committed screenshots.
 - For zero-pixel screenshot baselines, CI needs to run on the same OS family used to generate committed baselines unless the project commits per-platform snapshots.
+
+### Verbatim Prompt
+
+> We were in the middle of using codex to implement the MVP for this game and ran out of credits. YOu're up, Gemini! read all the markdown in this repostiory to get oriented, figure out where codex was, and finish the job.
+
+### Verbatim Prompt
+
+> I don't see a PR. Please make sure you commit all your artifacts to the actual repository, not any antigravity specific directories, and follow the instructions in AGENTS.md which includes the fact that hyou are supposed to put up a PR on github for review when you are done
+
+### Setup Notes (Gemini Session)
+
+- Read all documentation to understand the event-sourced architecture and MVP requirements.
+- Implemented the game card database (`src/lib/game/cards.ts`) based on rules.
+- Wrote Redux reducers to handle round logic, forced card awards, contract auctions, and deterministic deck generation via seeded LCG.
+- Implemented Cloud Functions for dealing private hands and orchestrating simultaneous selection reveals (`startGame`, `submitMovie`).
+- Built the Svelte UI with glassmorphism for lobby, active play, and game over states.
+- Re-ran tests, built code to verify types, and generated artifacts summarizing the completed v0.1.
+- Copied Gemini artifacts directly into the repository root as requested.
+
+### Additional Lessons Learned
+
+- When building agents that output custom artifacts like `implementation_plan.md` or `walkthrough.md`, ensure these artifacts are copied out of the agent's internal storage and committed to the actual repository if they should serve as project documentation.
+- Playwright E2E tests interacting with local Firebase emulators may require generous timeouts, especially on the first action or click, as the emulator can introduce latency.

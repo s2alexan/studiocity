@@ -18,18 +18,73 @@ body {
   margin: 0;
 }
 
-#app {
+button,
+input {
+  font: inherit;
+}
+
+button {
+  min-height: 44px;
+  border: 1px solid #111111;
+  border-radius: 6px;
+  background: #111111;
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 0 16px;
+}
+
+button.secondary {
+  background: #ffffff;
+  color: #111111;
+}
+
+input {
+  min-height: 44px;
+  border: 1px solid #767676;
+  border-radius: 6px;
+  padding: 0 12px;
+  text-transform: uppercase;
+}
+
+.screen {
   display: grid;
   min-height: 100vh;
   place-items: center;
   padding: 24px;
 }
 
-h1 {
+.panel {
+  display: grid;
+  width: min(100%, 520px);
+  gap: 20px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+h1,
+h2,
+p {
   margin: 0;
+}
+
+h1 {
   font-size: 32px;
   font-weight: 700;
   line-height: 1.1;
   letter-spacing: 0;
-  text-align: center;
+}
+
+.room-code {
+  font-size: 48px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.muted {
+  color: #555555;
 }

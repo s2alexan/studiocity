@@ -8,12 +8,24 @@ test('homepage renders', async ({ page }, testInfo) => {
   await page.goto('/');
 
   await tester.step('initial-load', {
-    description: 'Blank homepage is visible',
+    description: 'Homepage room controls are visible',
     verifications: [
       {
         spec: 'The welcome heading is visible',
         check: async () => {
           await expect(page.getByRole('heading', { name: 'welcome to studio city' })).toBeVisible();
+        },
+      },
+      {
+        spec: 'Create room control is available',
+        check: async () => {
+          await expect(page.getByRole('button', { name: 'Create room' })).toBeVisible();
+        },
+      },
+      {
+        spec: 'Join room control is available',
+        check: async () => {
+          await expect(page.getByRole('button', { name: 'Join room' })).toBeVisible();
         },
       },
     ],

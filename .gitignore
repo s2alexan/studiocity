@@ -1,6 +1,13 @@
 .DS_Store
 node_modules/
 dist/
+build/
+.svelte-kit/
+.firebase/
+firebase-debug.log
+firestore-debug.log
+*-debug.log
+functions/lib/
 playwright-report/
 test-results/
 .env

@@ -99,6 +99,20 @@ bun run test:e2e
 
 See `E2E_GUIDE.md` for the visual testing process.
 
+Firebase emulators are used for E2E tests:
+
+```sh
+bun run test:e2e
+```
+
+To set Firebase web config secrets from a Firebase config stanza:
+
+```sh
+bun run secrets:firebase -- --repo s2alexan/studiocity firebase-config.js
+```
+
+Set `FIREBASE_SERVICE_ACCOUNT` separately to enable CI deployment of Firestore rules and Cloud Functions.
+
 ## Copyright
 
 Copyright (c) 2026 Stefan Alexander. All rights reserved.
