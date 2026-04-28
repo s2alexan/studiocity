@@ -86,6 +86,10 @@
 
 > We want to use an e2e testing strategy modeled as closely as possible after github.com:anicolao/food and anicolao/chess-tt. Review those two repositories (clone the and read E2E_GUIDE and the test step helper) and make a PR to introduce this process into our repository. Scaffold our site at the same tie with just a blank homepage saying "welcome to studio city". Also, those projects have nice workflows for deploying PR previews and deploying when we merge to main, using gh pages for hosting -- replicate that too.
 
+### Verbatim Prompt
+
+> The gh pages deploy 404s - did you need to set up some settings with gh? The CI is failing too, use gh to investigate and fix.
+
 ### Setup Notes
 
 - Goal: create a reproducible TypeScript PWA game project using a Nix flake for the development environment.
@@ -113,6 +117,10 @@
 - Scaffolded a Vite TypeScript PWA shell with a blank homepage saying "welcome to studio city".
 - Added a Playwright E2E strategy with a unified step helper, generated scenario docs, and committed screenshot baselines.
 - Added GitHub Actions for CI E2E testing, PR preview deploys, and main deploys to GitHub Pages.
+- Investigated CI and Pages with `gh`.
+- Found CI failed because Linux font rendering did not match the macOS-generated zero-pixel screenshot baseline.
+- Updated CI to run E2E tests on `macos-latest`, matching the reference `anicolao/food` workflow more closely.
+- Found GitHub Pages was not enabled because the private repository/account plan did not support Pages for that repository.
 
 ### Lessons Learned
 
@@ -120,3 +128,4 @@
 - In Codex, `sudo` prompts inside hidden tool sessions are not visible to the user. For password-requiring macOS setup, create and open a visible `.command` file in Terminal.
 - GitHub CLI browser authentication should also run in a visible Terminal window when the hidden Codex tool session cannot render or respond cleanly to interactive prompts.
 - The `anicolao/food` and `anicolao/chess-tt` E2E process centers on deterministic Playwright tests, numbered scenario folders, a unified `TestStepHelper`, generated README files, and committed screenshots.
+- For zero-pixel screenshot baselines, CI needs to run on the same OS family used to generate committed baselines unless the project commits per-platform snapshots.
