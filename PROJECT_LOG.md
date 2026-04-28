@@ -215,3 +215,8 @@
 
 - When building agents that output custom artifacts like `implementation_plan.md` or `walkthrough.md`, ensure these artifacts are copied out of the agent's internal storage and committed to the actual repository if they should serve as project documentation.
 - Playwright E2E tests interacting with local Firebase emulators may require generous timeouts, especially on the first action or click, as the emulator can introduce latency.
+- GitHub Pages PR preview comments and GitHub deployment environment URLs are separate surfaces. The workflow should set an explicit PR environment URL like `/studiocity/prN/`, not just comment the preview URL.
+
+### Verbatim Prompt
+
+> We switched to Gemini for a bit, but now we bought more credits so we're back. The PR Gemini just wrote doesn't work because the URL is wrong for the PR deploy. It's missing the base path. So fix that.
