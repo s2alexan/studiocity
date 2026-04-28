@@ -4,7 +4,7 @@ import { onCall, HttpsError } from 'firebase-functions/https';
 
 initializeApp();
 
-const MOVIE_IDS = Array.from({ length: 31 }).map((_, i) => `m${i}`);
+const MOVIE_IDS = Array.from({ length: 31 }).map((_, i) => `_movie_${i + 1}`);
 const callableOptions = {
   cors: [
     'https://s2alexan.github.io',

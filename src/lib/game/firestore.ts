@@ -132,14 +132,18 @@ export function listenToPrivateData(
   gameCode: GameCode,
   playerId: PlayerId,
   onData: (data: { hand: string[]; chosenMovie: string | null } | null) => void,
+  onError: (error: Error) => void,
 ): Unsubscribe {
   const privateRef = doc(db, 'game', gameCode, 'private', playerId);
-  return onSnapshot(privateRef, (docSnapshot) => {
-    if (docSnapshot.exists()) {
-      onData(docSnapshot.data() as { hand: string[]; chosenMovie: string | null });
-    } else {
-      onData(null);
-    }
-  });
+  return onSnapshot(
+    privateRef,
+    (docSnapshot) => {
+      if (docSnapshot.exists()) {
+        onData(docSnapshot.data() as { hand: string[]; chosenMovie: string | null });
+      } else {
+        onData(null);
+      }
+    },
+    onError,
+  );
 }
-

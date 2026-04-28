@@ -56,7 +56,10 @@
       playerId,
       (data) => {
         privateData = data;
-      }
+      },
+      (caught) => {
+        error = `Could not load your hand: ${caught.message}`;
+      },
     );
 
     onDestroy(() => {
@@ -219,6 +222,7 @@
                 <!-- svelte-ignore a11y_click_events_have_key_events -->
                 <!-- svelte-ignore a11y_no_static_element_interactions -->
                 <div class="card contract {canPick ? 'pickable' : ''}" onclick={() => canPick && handleChooseContract(cId)}>
+                  <strong>{c.title}</strong>
                   <span class="value">{c.value} pts</span>
                   <span class="desc">{c.description}</span>
                 </div>
@@ -248,21 +252,34 @@
           {#if privateData?.chosenMovie}
             <div class="waiting-message">Waiting for others to choose...</div>
           {:else}
-            <div class="cards">
-              {#each privateData?.hand ?? [] as movieId}
-                {@const m = getMovieCard(movieId)}
-                <!-- svelte-ignore a11y_click_events_have_key_events -->
-                <!-- svelte-ignore a11y_no_static_element_interactions -->
-                <div class="card movie playable" onclick={() => handlePlayMovie(movieId)}>
-                  <strong>{m.title}</strong>
-                  <div class="ranks">
-                    <span class="r-bo" title="Box Office Rank">{m.boxOfficeRank}</span>
-                    <span class="r-rev" title="Review Rank">{m.reviewRank}</span>
-                    <span class="r-con" title="Contract Rank">{m.contractRank}</span>
-                  </div>
-                </div>
-              {/each}
-            </div>
+            {#if privateData?.hand?.length}
+              <div class="cards">
+                {#each privateData.hand as movieId}
+                  {@const m = getMovieCard(movieId)}
+                  {#if m}
+                    <!-- svelte-ignore a11y_click_events_have_key_events -->
+                    <!-- svelte-ignore a11y_no_static_element_interactions -->
+                    <div class="card movie playable" onclick={() => handlePlayMovie(movieId)}>
+                      <strong>{m.title}</strong>
+                      <div class="ranks">
+                        <span class="r-bo" title="Box Office Rank">{m.boxOfficeRank}</span>
+                        <span class="r-rev" title="Review Rank">{m.reviewRank}</span>
+                        <span class="r-con" title="Contract Rank">{m.contractRank}</span>
+                      </div>
+                    </div>
+                  {:else}
+                    <div class="card movie">
+                      <strong>Unknown movie</strong>
+                      <span>{movieId}</span>
+                    </div>
+                  {/if}
+                {/each}
+              </div>
+            {:else}
+              <div class="waiting-message">
+                {privateData ? 'Your hand is empty.' : 'Waiting for your hand to be dealt...'}
+              </div>
+            {/if}
           {/if}
         {:else if projection.phase === 'contract_auction'}
           <div class="auction-notice">

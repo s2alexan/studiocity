@@ -1,0 +1,122 @@
+quantity,name,background,movie_name,box_office,reviews,contracts,stars,critic_review_quote,contract_notes,contract_title,contract_condition,contract_reward,card_back
+1,_movie_1,{{ images.movie_background.url }},The Shawshank Pardon,0,19,26,,,,,,,{{ images.movie_card_back.url }}
+1,_movie_2,{{ images.movie_background.url }},The Don’s Promise,1,27,17,,,,,,,{{ images.movie_card_back.url }}
+1,_movie_3,{{ images.movie_background.url }},The Dark Guardian,2,14,29,,,,,,,{{ images.movie_card_back.url }}
+1,_movie_4,{{ images.movie_background.url }},Citizen Kline,3,22,20,,,,,,,{{ images.movie_card_back.url }}
+1,_movie_5,{{ images.movie_background.url }},12 Indignant Men,4,29,12,,,,,,,{{ images.movie_card_back.url }}
+1,_movie_6,{{ images.movie_background.url }},Schindler’s Ledger,5,30,10,,,,,,,{{ images.movie_card_back.url }}
+1,_movie_7,{{ images.movie_background.url }},The Prestige Clause,6,24,15,,,,,,,{{ images.movie_card_back.url }}
+1,_movie_8,{{ images.movie_background.url }},Pulp Stories,7,17,21,,,,,,,{{ images.movie_card_back.url }}
+1,_movie_9,{{ images.movie_background.url }},The Known Suspects,8,9,28,,,,,,,{{ images.movie_card_back.url }}
+1,_movie_10,{{ images.movie_background.url }},Back Window,9,25,11,,,,,,,{{ images.movie_card_back.url }}
+1,_movie_11,{{ images.movie_background.url }},Forrest’s Run,10,12,23,,,,,,,{{ images.movie_card_back.url }}
+1,_movie_12,{{ images.movie_background.url }},Brawl Club,11,4,30,,,,,,,{{ images.movie_card_back.url }}
+1,_movie_13,{{ images.movie_background.url }},Alien Visitor,12,20,13,,,,,,,{{ images.movie_card_back.url }}
+1,_movie_14,{{ images.movie_background.url }},Dream Ingress,13,23,9,,,,,,,{{ images.movie_card_back.url }}
+1,_movie_15,{{ images.movie_background.url }},Apocalypse Today,14,28,3,,,,,,,{{ images.movie_card_back.url }}
+1,_movie_16,{{ images.movie_background.url }},The Matrix Code,15,6,24,,,,,,,{{ images.movie_card_back.url }}
+1,_movie_17,{{ images.movie_background.url }},Keepsake,16,2,27,,,,,,,{{ images.movie_card_back.url }}
+1,_movie_18,{{ images.movie_background.url }},Seven Sins,17,3,25,,,,,,,{{ images.movie_card_back.url }}
+1,_movie_19,{{ images.movie_background.url }},It’s a Remarkable Existence,18,8,19,,,,,,,{{ images.movie_card_back.url }}
+1,_movie_20,{{ images.movie_background.url }},Seven Swordsmen,19,26,0,,,,,,,{{ images.movie_card_back.url }}
+1,_movie_21,{{ images.movie_background.url }},The Hush of The Goats,20,7,18,,,,,,,{{ images.movie_card_back.url }}
+1,_movie_22,{{ images.movie_background.url }},Saving Seargent Steven,21,18,6,,,,,,,{{ images.movie_card_back.url }}
+1,_movie_23,{{ images.movie_background.url }},City of Saints,22,1,22,,,,,,,{{ images.movie_card_back.url }}
+1,_movie_24,{{ images.movie_background.url }},Galactic Bound,23,21,1,,,,,,,{{ images.movie_card_back.url }}
+1,_movie_25,{{ images.movie_background.url }},Life Is Lovely,24,16,5,,,,,,,{{ images.movie_card_back.url }}
+1,_movie_26,{{ images.movie_background.url }},The Green Line,25,13,7,,,,,,,{{ images.movie_card_back.url }}
+1,_movie_27,{{ images.movie_background.url }},Eliminator 2: Reckoning Day,26,5,14,,,,,,,{{ images.movie_card_back.url }}
+1,_movie_28,{{ images.movie_background.url }},Amadeo,27,10,8,,,,,,,{{ images.movie_card_back.url }}
+1,_movie_29,{{ images.movie_background.url }},Back to Tomorrow,28,15,2,,,,,,,{{ images.movie_card_back.url }}
+1,_movie_30,{{ images.movie_background.url }},Psychosis,29,0,16,,,,,,,{{ images.movie_card_back.url }}
+1,_movie_31,{{ images.movie_background.url }},Leon the Cleaner,30,11,4,,,,,,,{{ images.movie_card_back.url }}
+1,contract_1,{{ images.contract_background.url }},,,,,,,,WebFlix License,<ccb>9-14</ccb> <star/>,3,{{ images.contract_card_back.url }}
+1,contract_2,{{ images.contract_background.url }},,,,,,,,Vinyl Limited Edition,<ccb>10-14</ccb> <star/>,4,{{ images.contract_card_back.url }}
+1,contract_3,{{ images.contract_background.url }},,,,,,,,Kiosk Rental,<ccb>11-14</ccb> <star/>,4,{{ images.contract_card_back.url }}
+1,contract_4,{{ images.contract_background.url }},,,,,,,,CableOne Bundle,<ccb>12-15</ccb> <star/>,4,{{ images.contract_card_back.url }}
+1,contract_5,{{ images.contract_background.url }},,,,,,,,Second-Run Theatre,<ccb>13-17</ccb> <star/>,5,{{ images.contract_card_back.url }}
+1,contract_6,{{ images.contract_background.url }},,,,,,,,Airline Deal,<ccb>14-18</ccb> <star/>,7,{{ images.contract_card_back.url }}
+1,contract_7,{{ images.contract_background.url }},,,,,,,,Hotel Pay Per View,<ccb>15-20</ccb> <star/>,9,{{ images.contract_card_back.url }}
+1,contract_8,{{ images.contract_background.url }},,,,,,,,Library Copy Fee,"More <star/>
+than <bill/>",8,{{ images.contract_card_back.url }}
+1,contract_9,{{ images.contract_background.url }},,,,,,,,Classroom Kit,"More <star/>
+than <player_to_right/>",6,{{ images.contract_card_back.url }}
+1,contract_10,{{ images.contract_background.url }},,,,,,,,DVD Value Pack,<ccb>13-20</ccb> <bill/>,3,{{ images.contract_card_back.url }}
+1,contract_11,{{ images.contract_background.url }},,,,,,,,BluRay Steel Tin,<ccb>14-20</ccb> <bill/>,3,{{ images.contract_card_back.url }}
+1,contract_12,{{ images.contract_background.url }},,,,,,,,4K Ultra Disk,<ccb>15-20</ccb> <bill/>,4,{{ images.contract_card_back.url }}
+1,contract_13,{{ images.contract_background.url }},,,,,,,,Drive-In Nights,"More <bill/>
+than <star/>",3,{{ images.contract_card_back.url }}
+1,contract_14,{{ images.contract_background.url }},,,,,,,,3D Re-Release,"More <bill/>
+than <player_to_right/>",3,{{ images.contract_card_back.url }}
+1,contract_15,{{ images.contract_background.url }},,,,,,,,Foreign Dub Rights,<ccb>3-5</ccb> <blockbuster/>,3,{{ images.contract_card_back.url }}
+1,contract_16,{{ images.contract_background.url }},,,,,,,,Soundtrack Album,<ccb>3-5</ccb> <loved/>,4,{{ images.contract_card_back.url }}
+1,contract_17,{{ images.contract_background.url }},,,,,,,,Novelization Deal,<ccb>2-3</ccb> <loved/>,4,{{ images.contract_card_back.url }}
+1,contract_18,{{ images.contract_background.url }},,,,,,,,Comic Mini-Series,"More <blockbuster/>
+than <loved/>",4,{{ images.contract_card_back.url }}
+1,contract_19,{{ images.contract_background.url }},,,,,,,,AAA Console Game,"More <loved/>
+than <blockbuster/>",8,{{ images.contract_card_back.url }}
+1,contract_20,{{ images.contract_background.url }},,,,,,,,Fast Food Toys,<blockbuster/> = <loved/>,9,{{ images.contract_card_back.url }}
+1,contract_21,{{ images.contract_background.url }},,,,,,,,NFT Rug Pull,"More <loved/>
+than <player_to_right/>",6,{{ images.contract_card_back.url }}
+1,contract_22,{{ images.contract_background.url }},,,,,,,,Mobile Gacha Game,"More <blockbuster/>
+than <player_to_right/>",3,{{ images.contract_card_back.url }}
+1,contract_23,{{ images.contract_background.url }},,,,,,,,Branded Toothbrush,"Same or more <loved/>
+than <player_to_right/>",4,{{ images.contract_card_back.url }}
+1,contract_24,{{ images.contract_background.url }},,,,,,,,Plushies License,"Fewer <loved/>
+than <player_to_right/>",5,{{ images.contract_card_back.url }}
+1,contract_25,{{ images.contract_background.url }},,,,,,,,BrickToy Set,"Higher unreleased <box_office_rank_icon />
+than <player_to_right/>",7,{{ images.contract_card_back.url }}
+1,contract_26,{{ images.contract_background.url }},,,,,,,,Theme Park Ride,"Higher unreleased <review_rank_icon />
+than <player_to_right/>",7,{{ images.contract_card_back.url }}
+1,contract_27,{{ images.contract_background.url }},,,,,,,,Teen Magazine Posters,"Higher unreleased <contract_rank_icon />
+than <player_to_right/>",7,{{ images.contract_card_back.url }}
+1,money_1,{{ images.money_background_1.url }},,,,,,,,,,,{{ images.money_card_back.url }}
+1,money_2,{{ images.money_background_1.url }},,,,,,,,,,,{{ images.money_card_back.url }}
+1,money_3,{{ images.money_background_1.url }},,,,,,,,,,,{{ images.money_card_back.url }}
+1,money_4,{{ images.money_background_1.url }},,,,,,,,,,,{{ images.money_card_back.url }}
+1,money_5,{{ images.money_background_1.url }},,,,,,,,,,,{{ images.money_card_back.url }}
+1,money_6,{{ images.money_background_1.url }},,,,,,,,,,,{{ images.money_card_back.url }}
+1,money_7,{{ images.money_background_2.url }},,,,,,,,,,,{{ images.money_card_back.url }}
+1,money_8,{{ images.money_background_2.url }},,,,,,,,,,,{{ images.money_card_back.url }}
+1,money_9,{{ images.money_background_2.url }},,,,,,,,,,,{{ images.money_card_back.url }}
+1,money_10,{{ images.money_background_2.url }},,,,,,,,,,,{{ images.money_card_back.url }}
+1,money_11,{{ images.money_background_2.url }},,,,,,,,,,,{{ images.money_card_back.url }}
+1,money_12,{{ images.money_background_2.url }},,,,,,,,,,,{{ images.money_card_back.url }}
+1,money_13,{{ images.money_background_3.url }},,,,,,,,,,,{{ images.money_card_back.url }}
+1,money_14,{{ images.money_background_3.url }},,,,,,,,,,,{{ images.money_card_back.url }}
+1,money_15,{{ images.money_background_3.url }},,,,,,,,,,,{{ images.money_card_back.url }}
+1,money_16,{{ images.money_background_3.url }},,,,,,,,,,,{{ images.money_card_back.url }}
+1,money_17,{{ images.money_background_3.url }},,,,,,,,,,,{{ images.money_card_back.url }}
+1,money_18,{{ images.money_background_3.url }},,,,,,,,,,,{{ images.money_card_back.url }}
+1,money_19,{{ images.money_background_3.url }},,,,,,,,,,,{{ images.money_card_back.url }}
+1,money_20,{{ images.money_background_4.url }},,,,,,,,,,,{{ images.money_card_back.url }}
+1,money_21,{{ images.money_background_4.url }},,,,,,,,,,,{{ images.money_card_back.url }}
+1,money_22,{{ images.money_background_4.url }},,,,,,,,,,,{{ images.money_card_back.url }}
+1,money_23,{{ images.money_background_4.url }},,,,,,,,,,,{{ images.money_card_back.url }}
+1,money_24,{{ images.money_background_4.url }},,,,,,,,,,,{{ images.money_card_back.url }}
+1,money_25,{{ images.money_background_4.url }},,,,,,,,,,,{{ images.money_card_back.url }}
+1,review_1,{{ images.review_background_1.url }},,,,,{{ images.star_1.url }},Question your relationship with anyone who likes this movie,,,,,{{ images.review_card_back.url }}
+1,review_2,{{ images.review_background_1.url }},,,,,{{ images.star_1.url }},90 minutes of second- hand embarrassment,,,,,{{ images.review_card_back.url }}
+1,review_3,{{ images.review_background_1.url }},,,,,{{ images.star_1.url }},No one will find it funny without illegal substances,,,,,{{ images.review_card_back.url }}
+1,review_4,{{ images.review_background_1.url }},,,,,{{ images.star_1.url }},To call it dead and buried is an insult to soil,,,,,{{ images.review_card_back.url }}
+1,review_5,{{ images.review_background_1.url }},,,,,{{ images.star_1.url }},To call the plot derivative is to insult a useful financial instrument,,,,,{{ images.review_card_back.url }}
+1,review_6,{{ images.review_background_1.url }},,,,,{{ images.star_1.url }},I would rather spend the rest of my life in a cave than see this movie again,,,,,{{ images.review_card_back.url }}
+1,review_7,{{ images.review_background_2.url }},,,,,{{ images.star_2.url }},Disagreeable in a hostile way,,,,,{{ images.review_card_back.url }}
+1,review_8,{{ images.review_background_2.url }},,,,,{{ images.star_2.url }},Does not improve on the sight of a blank wall,,,,,{{ images.review_card_back.url }}
+1,review_9,{{ images.review_background_2.url }},,,,,{{ images.star_2.url }},Third-worst movie of the year,,,,,{{ images.review_card_back.url }}
+1,review_10,{{ images.review_background_2.url }},,,,,{{ images.star_2.url }},I've seen more thrilling tax reports,,,,,{{ images.review_card_back.url }}
+1,review_11,{{ images.review_background_2.url }},,,,,{{ images.star_2.url }},A grievous experience in every category,,,,,{{ images.review_card_back.url }}
+1,review_12,{{ images.review_background_2.url }},,,,,{{ images.star_2.url }},A painfully long lapse of taste,,,,,{{ images.review_card_back.url }}
+1,review_13,{{ images.review_background_3.url }},,,,,{{ images.star_3.url }},Darkly comical,,,,,{{ images.review_card_back.url }}
+1,review_14,{{ images.review_background_3.url }},,,,,{{ images.star_3.url }},"The big-picture story works beautifully, but the specifics are questionable",,,,,{{ images.review_card_back.url }}
+1,review_15,{{ images.review_background_3.url }},,,,,{{ images.star_3.url }},Not especially memorable,,,,,{{ images.review_card_back.url }}
+1,review_16,{{ images.review_background_3.url }},,,,,{{ images.star_3.url }},An unconvincing plot,,,,,{{ images.review_card_back.url }}
+1,review_17,{{ images.review_background_3.url }},,,,,{{ images.star_3.url }},An impressive debut,,,,,{{ images.review_card_back.url }}
+1,review_18,{{ images.review_background_3.url }},,,,,{{ images.star_3.url }},I liked this story better when it was called 'Citizen Kane',,,,,{{ images.review_card_back.url }}
+1,review_19,{{ images.review_background_3.url }},,,,,{{ images.star_4.url }},This decade's Gremlins!,,,,,{{ images.review_card_back.url }}
+1,review_20,{{ images.review_background_4.url }},,,,,{{ images.star_4.url }},"Continually intelligent, funny, and shocking",,,,,{{ images.review_card_back.url }}
+1,review_21,{{ images.review_background_4.url }},,,,,{{ images.star_4.url }},Bold and blisteringly biting,,,,,{{ images.review_card_back.url }}
+1,review_22,{{ images.review_background_4.url }},,,,,{{ images.star_4.url }},An uncontrolled dramatic explosion,,,,,{{ images.review_card_back.url }}
+1,review_23,{{ images.review_background_4.url }},,,,,{{ images.star_4.url }},Pacing that recalls classic Kubrick,,,,,{{ images.review_card_back.url }}
+1,review_24,{{ images.review_background_4.url }},,,,,{{ images.star_4.url }},An engrossing experience,,,,,{{ images.review_card_back.url }}
+1,review_25,{{ images.review_background_4.url }},,,,,{{ images.star_5.url }},Triumphant!,,,,,{{ images.review_card_back.url }}

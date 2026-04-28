@@ -227,3 +227,11 @@
 >
 > ESQT:1 Access to fetch at 'https://us-central1-studiocity-f56c1.cloudfunctions.net/startGame' from origin 'https://s2alexan.github.io' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource.
 > us-central1-studiocity-f56c1.cloudfunctions.net/startGame:1  Failed to load resource: net::ERR_FAILED
+
+### Verbatim Prompt
+
+> look in ~/Downloads for the csv adn .zip export of the cards, and tell me what the filenames are, then stop.
+
+### Verbatim Prompt
+
+> That looks right! integrate the real cards into the implementation. Also when we started a game, we didn't see our hands, make sure the UI shows each player their hand.

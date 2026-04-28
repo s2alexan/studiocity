@@ -8,7 +8,7 @@ service cloud.firestore {
 
     function isUserInputAction(data) {
       return data.keys().hasOnly(['type', 'at', 'actorId', 'payload'])
-        && data.type in ['ROOM_CREATED', 'PLAYER_JOINED']
+        && data.type in ['ROOM_CREATED', 'PLAYER_JOINED', 'SEAT_CLAIMED', 'CONTRACT_CHOSEN']
         && data.at is number
         && data.actorId is string
         && data.payload is map;
@@ -38,7 +38,8 @@ service cloud.firestore {
       }
 
       match /private/{playerId} {
-        allow read, write: if false;
+        allow get: if isGameCode(gameCode);
+        allow list, write: if false;
       }
     }
   }
