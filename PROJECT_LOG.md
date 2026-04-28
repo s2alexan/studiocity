@@ -121,6 +121,8 @@
 - Found CI failed because Linux font rendering did not match the macOS-generated zero-pixel screenshot baseline.
 - Updated CI to run E2E tests on `macos-latest`, matching the reference `anicolao/food` workflow more closely.
 - Found GitHub Pages was not enabled because the private repository/account plan did not support Pages for that repository.
+- Made the GitHub repository public with `gh repo edit` so GitHub Pages can be enabled.
+- Enabled GitHub Pages from the `gh-pages` branch root with the GitHub REST API via `gh api`.
 
 ### Lessons Learned
 
