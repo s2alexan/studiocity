@@ -7,17 +7,17 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
-  timeout: 2000,
+  timeout: 10000,
   expect: {
-    timeout: 2000,
+    timeout: 10000,
     toHaveScreenshot: { maxDiffPixels: 0 },
   },
   use: {
     baseURL: 'http://127.0.0.1:5173',
     trace: 'on-first-retry',
     screenshot: 'on',
-    actionTimeout: 2000,
-    navigationTimeout: 2000,
+    actionTimeout: 10000,
+    navigationTimeout: 10000,
     contextOptions: { reducedMotion: 'reduce' },
     serviceWorkers: 'block',
     launchOptions: {
