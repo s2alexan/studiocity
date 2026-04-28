@@ -13,6 +13,7 @@ const callableOptions = {
     'http://localhost:5173',
     'http://localhost:4173',
   ],
+  invoker: 'public',
 };
 
 function shuffle<T>(array: T[]): T[] {
