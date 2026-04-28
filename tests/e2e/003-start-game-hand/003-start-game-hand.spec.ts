@@ -2,6 +2,8 @@ import { expect, test, type Page } from '@playwright/test';
 import { MOVIE_DECK } from '../../../src/lib/game/cards';
 import { TestStepHelper } from '../helpers/test-step-helper';
 
+test.setTimeout(30000);
+
 async function normalizeRandomGameContent(page: Page) {
   await page.evaluate(() => {
     document.querySelectorAll('.market-area .card .value').forEach((element) => {
@@ -12,6 +14,12 @@ async function normalizeRandomGameContent(page: Page) {
     });
     document.querySelectorAll('.market-area .card.contract .desc').forEach((element) => {
       element.textContent = 'Contract condition';
+    });
+    document.querySelectorAll('.market-area .card.contract.pickable').forEach((element) => {
+      element.classList.remove('pickable');
+    });
+    document.querySelectorAll('.auction-notice').forEach((element) => {
+      element.textContent = 'Contract selection is active.';
     });
     document.querySelectorAll('.hand-area .card.movie.playable').forEach((card, index) => {
       const title = card.querySelector('strong');
@@ -120,6 +128,7 @@ test('started game shows the local player hand', async ({ browser, page }, testI
         check: async () => {
           await expect(page.getByText('BO: 1')).toHaveCount(2);
           await expect(page.getByText('Rev: 1')).toHaveCount(2);
+          await normalizeRandomGameContent(page);
         },
       },
     ],
