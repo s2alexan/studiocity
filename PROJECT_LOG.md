@@ -220,3 +220,10 @@
 ### Verbatim Prompt
 
 > We switched to Gemini for a bit, but now we bought more credits so we're back. The PR Gemini just wrote doesn't work because the URL is wrong for the PR deploy. It's missing the base path. So fix that.
+
+### Verbatim Prompt
+
+> When we tried to start a game we got these errors in the console:
+>
+> ESQT:1 Access to fetch at 'https://us-central1-studiocity-f56c1.cloudfunctions.net/startGame' from origin 'https://s2alexan.github.io' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+> us-central1-studiocity-f56c1.cloudfunctions.net/startGame:1  Failed to load resource: net::ERR_FAILED

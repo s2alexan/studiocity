@@ -5,6 +5,15 @@ import { onCall, HttpsError } from 'firebase-functions/https';
 initializeApp();
 
 const MOVIE_IDS = Array.from({ length: 31 }).map((_, i) => `m${i}`);
+const callableOptions = {
+  cors: [
+    'https://s2alexan.github.io',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:4173',
+    'http://localhost:5173',
+    'http://localhost:4173',
+  ],
+};
 
 function shuffle<T>(array: T[]): T[] {
   const result = [...array];
@@ -15,7 +24,7 @@ function shuffle<T>(array: T[]): T[] {
   return result;
 }
 
-export const startGame = onCall(async (request) => {
+export const startGame = onCall(callableOptions, async (request) => {
   const { gameCode, actorId, playerIds } = request.data as {
     gameCode: string;
     actorId: string;
@@ -57,7 +66,7 @@ export const startGame = onCall(async (request) => {
   return { success: true };
 });
 
-export const submitMovie = onCall(async (request) => {
+export const submitMovie = onCall(callableOptions, async (request) => {
   const { gameCode, actorId, round, movieId } = request.data as {
     gameCode: string;
     actorId: string;
@@ -130,7 +139,7 @@ export const submitMovie = onCall(async (request) => {
   return { success: true };
 });
 
-export const roomSummary = onCall(async (request) => {
+export const roomSummary = onCall(callableOptions, async (request) => {
   const gameCode = String(request.data?.gameCode ?? '').toUpperCase();
   if (!/^[A-Z]{4}$/.test(gameCode)) {
     throw new HttpsError('invalid-argument', 'Expected a four-letter room code.');
@@ -148,4 +157,3 @@ export const roomSummary = onCall(async (request) => {
     actionCount: actions.size,
   };
 });
-
