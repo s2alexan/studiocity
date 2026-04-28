@@ -102,6 +102,10 @@
 
 > wait a moment - I will merge that PR so you can work off off main. I have merged it now; so pull main and work from there
 
+### Verbatim Prompt
+
+> that looks great, let's merge that PR. Now we're going to ake some policy decisions for studio city that might be different for other projects. We will use firestore for the backend, we will use redux for state management and we will use redux actions to create an event-sourced system where what is recorded in the game actions alwyas corresponds *only to user input* and *never to a computed thing*, and then build reducers that show the UI for the game. We can have a collection naed soething like game/GAME_CODE where GAME_CODE is a random 4-letter string of all capital letters. Then wehn the user opens the game on room/ABCD that will start a firestore listener on that game room and replay the actions to show the UI. The UI itself will be built in svelte/sveltekit with vanilla svelte CSS (NO TAILWIND) and hidden information/private information can be coputed with cloud functions on the firebase project. We'll need a script that can take the firebase configuratoin stanza and turn it into secrets on the repo, and yoiu'll need to be able to deploy firebase rules and functions from CI. Let's start by writing an MVP_DESIGN doc that reflects all tehse decisions accurately, don't write any code yet.
+
 ### Setup Notes
 
 - Goal: create a reproducible TypeScript PWA game project using a Nix flake for the development environment.
@@ -139,6 +143,8 @@
 - Added a clear all-rights-reserved copyright statement for Stefan Alexander.
 - Pulled the merged E2E/GitHub Pages setup into `main`.
 - Added `NEW_PROJECT_SETUP.md` summarizing reusable setup decisions and lessons.
+- Rebased and merged PR #3 after discovering merge commits and squash merges are disabled for the repository.
+- Added `MVP_DESIGN.md` documenting Studio City-specific MVP policy decisions without adding implementation code.
 
 ### Lessons Learned
 
