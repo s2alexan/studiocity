@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { base } from '$app/paths';
   import { getFirebaseServices } from '$lib/firebase/config';
   import { createGameCode, isGameCode } from '$lib/game/actions';
   import { createRoom } from '$lib/game/firestore';
@@ -17,7 +18,7 @@
     try {
       const { db } = getFirebaseServices();
       await createRoom(db, gameCode, getLocalPlayerId(), name.trim() || 'Player');
-      await goto(`/room/${gameCode}`);
+      await goto(`${base}/room/${gameCode}`);
     } catch (caught) {
       error = caught instanceof Error ? caught.message : 'Could not create room.';
     } finally {
@@ -32,7 +33,7 @@
       error = 'Enter a four-letter room code.';
       return;
     }
-    await goto(`/room/${normalized}`);
+    await goto(`${base}/room/${normalized}`);
   }
 </script>
 
