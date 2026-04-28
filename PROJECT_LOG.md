@@ -90,6 +90,10 @@
 
 > The gh pages deploy 404s - did you need to set up some settings with gh? The CI is failing too, use gh to investigate and fix.
 
+### Verbatim Prompt
+
+> We need to make this repo public, we forgot to say so earlier. Just put a clear copyright statement all rights reserved, Stefan Alexander.
+
 ### Setup Notes
 
 - Goal: create a reproducible TypeScript PWA game project using a Nix flake for the development environment.
@@ -123,6 +127,8 @@
 - Found GitHub Pages was not enabled because the private repository/account plan did not support Pages for that repository.
 - Made the GitHub repository public with `gh repo edit` so GitHub Pages can be enabled.
 - Enabled GitHub Pages from the `gh-pages` branch root with the GitHub REST API via `gh api`.
+- Confirmed the GitHub repository visibility is public.
+- Added a clear all-rights-reserved copyright statement for Stefan Alexander.
 
 ### Lessons Learned
 

@@ -98,3 +98,7 @@ bun run test:e2e
 ```
 
 See `E2E_GUIDE.md` for the visual testing process.
+
+## Copyright
+
+Copyright (c) 2026 Stefan Alexander. All rights reserved.
