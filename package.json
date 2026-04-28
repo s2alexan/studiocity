@@ -13,7 +13,7 @@
     "playwright:install": "bun --bun playwright install --with-deps chromium",
     "emulators": "firebase emulators:start --only firestore,functions",
     "emulators:exec": "firebase emulators:exec --only firestore,functions",
-    "firebase:deploy": "firebase deploy --project studiocity-f56c1 --only firestore:rules,functions",
+    "firebase:deploy": "bun run build:functions && firebase deploy --project studiocity-f56c1 --only firestore:rules,functions --force",
     "secrets:firebase": "node scripts/set-firebase-secrets.mjs",
     "test:e2e": "bun --bun playwright test",
     "test:e2e:update-snapshots": "bun --bun playwright test --update-snapshots"
