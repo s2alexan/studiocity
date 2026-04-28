@@ -82,6 +82,10 @@
 >
 > In general we want to do everything via PRs, make a note of that in agents.md and put up a PR
 
+### Verbatim Prompt
+
+> We want to use an e2e testing strategy modeled as closely as possible after github.com:anicolao/food and anicolao/chess-tt. Review those two repositories (clone the and read E2E_GUIDE and the test step helper) and make a PR to introduce this process into our repository. Scaffold our site at the same tie with just a blank homepage saying "welcome to studio city". Also, those projects have nice workflows for deploying PR previews and deploying when we merge to main, using gh pages for hosting -- replicate that too.
+
 ### Setup Notes
 
 - Goal: create a reproducible TypeScript PWA game project using a Nix flake for the development environment.
@@ -105,9 +109,14 @@
 - Removed tablet support from the product vision.
 - Removed version notes from `README.md`.
 - Added `AGENTS.md` with a PR-first workflow note.
+- Cloned and reviewed `anicolao/food` and `anicolao/chess-tt`, focusing on `E2E_GUIDE.md`, `tests/e2e/helpers/test-step-helper.ts`, Playwright config, and GitHub Pages workflows.
+- Scaffolded a Vite TypeScript PWA shell with a blank homepage saying "welcome to studio city".
+- Added a Playwright E2E strategy with a unified step helper, generated scenario docs, and committed screenshot baselines.
+- Added GitHub Actions for CI E2E testing, PR preview deploys, and main deploys to GitHub Pages.
 
 ### Lessons Learned
 
 - Starting with a project log before installing tools gives us a durable transcript even if environment setup needs multiple shell sessions.
 - In Codex, `sudo` prompts inside hidden tool sessions are not visible to the user. For password-requiring macOS setup, create and open a visible `.command` file in Terminal.
 - GitHub CLI browser authentication should also run in a visible Terminal window when the hidden Codex tool session cannot render or respond cleanly to interactive prompts.
+- The `anicolao/food` and `anicolao/chess-tt` E2E process centers on deterministic Playwright tests, numbered scenario folders, a unified `TestStepHelper`, generated README files, and committed screenshots.

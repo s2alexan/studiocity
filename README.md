@@ -90,3 +90,11 @@ The current dev shell provides:
 - Bun
 - GitHub CLI
 - Git
+
+Run the E2E suite:
+
+```sh
+bun run test:e2e
+```
+
+See `E2E_GUIDE.md` for the visual testing process.
