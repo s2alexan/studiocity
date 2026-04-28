@@ -94,6 +94,14 @@
 
 > We need to make this repo public, we forgot to say so earlier. Just put a clear copyright statement all rights reserved, Stefan Alexander.
 
+### Verbatim Prompt
+
+> OK we've reached a point where we'd always like to follow this process for setting up a new repository. Let's review everything in the project log, and write me a summary called NEW_PROJECT_SETUP.md that summarizes every important decision and learning so far, and put that up as a PR for review.
+
+### Verbatim Prompt
+
+> wait a moment - I will merge that PR so you can work off off main. I have merged it now; so pull main and work from there
+
 ### Setup Notes
 
 - Goal: create a reproducible TypeScript PWA game project using a Nix flake for the development environment.
@@ -129,6 +137,8 @@
 - Enabled GitHub Pages from the `gh-pages` branch root with the GitHub REST API via `gh api`.
 - Confirmed the GitHub repository visibility is public.
 - Added a clear all-rights-reserved copyright statement for Stefan Alexander.
+- Pulled the merged E2E/GitHub Pages setup into `main`.
+- Added `NEW_PROJECT_SETUP.md` summarizing reusable setup decisions and lessons.
 
 ### Lessons Learned
 
