@@ -100,25 +100,34 @@ export const submitMovie = onCall(callableOptions, async (request) => {
       throw new HttpsError('invalid-argument', 'Movie not in hand.');
     }
 
-    // Move movie from hand to chosenMovie
-    const newHand = hand.filter(m => m !== movieId);
-    transaction.update(privateRef, { hand: newHand, chosenMovie: movieId });
-
-    // Check if all players have submitted
     const choices: Record<string, string> = {};
-    choices[actorId] = movieId; // Optimistically add current player
-
     let allSubmitted = true;
+
+    // Read every needed private doc before writing; Firestore transactions reject
+    // reads that happen after writes.
+    const otherChoices: Record<string, string | null> = {};
     for (const pId of playerIds) {
       if (pId === actorId) continue;
       const pDoc = await transaction.get(gameRef.collection('private').doc(pId));
       const pData = pDoc.data();
-      if (!pData || !pData.chosenMovie) {
+      otherChoices[pId] = pData?.chosenMovie ?? null;
+    }
+
+    choices[actorId] = movieId;
+
+    for (const pId of playerIds) {
+      if (pId === actorId) continue;
+      const chosenMovie = otherChoices[pId];
+      if (!chosenMovie) {
         allSubmitted = false;
         break;
       }
-      choices[pId] = pData.chosenMovie;
+      choices[pId] = chosenMovie;
     }
+
+    // Move movie from hand to chosenMovie
+    const newHand = hand.filter(m => m !== movieId);
+    transaction.update(privateRef, { hand: newHand, chosenMovie: movieId });
 
     if (allSubmitted) {
       // Clear chosenMovie for all players

@@ -19,3 +19,12 @@ Starting a game deals a private hand and renders real Studio City movie cards fo
 - [x] The local player sees six dealt movie cards
 - [x] Every dealt card title comes from the real card export
 
+## Submitted movies advance the game to contract selection
+
+![Submitted movies advance the game to contract selection](./screenshots/002-contract-auction.png)
+
+### Verifications
+
+- [x] The round advances to the contract auction phase
+- [x] Both players received box office and review cards
+
