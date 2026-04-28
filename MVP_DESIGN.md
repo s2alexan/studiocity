@@ -1,174 +1,324 @@
-# MVP Design
+# MVP Design: v0.1
 
-This document records Studio City-specific product and architecture decisions for the first playable web MVP. These decisions are intentionally project-specific and may differ from the reusable setup process in `NEW_PROJECT_SETUP.md`.
+This document describes the v0.1 target for Studio City. It turns the project-level architecture decisions into a concrete first playable milestone while keeping implementation details reviewable before code is written.
 
-## Product Target
+## v0.1 Goal
 
-Studio City will be a public, installable web game for 2-5 players. The MVP should prioritize a faithful multiplayer implementation of the tabletop rules, clear game-room joining, and deterministic replay of game state from user actions.
+v0.1 should prove that Studio City can run as a multiplayer web game where every visible game state is derived from a replayable stream of user-input actions.
 
-The first implementation should be built to support:
+The release should support:
 
-- creating or joining a room by code,
-- replaying game history from stored actions,
-- rendering the current game state from reducers,
-- handling hidden or private information without leaking it to other clients,
-- deploying continuously through the existing PR preview and GitHub Pages workflow.
+- creating a game room,
+- joining a game room by code,
+- listening to a room in Firestore,
+- replaying room actions through Redux reducers,
+- rendering the derived UI in Svelte/SvelteKit,
+- preserving hidden information boundaries through Firebase Cloud Functions,
+- deploying frontend previews through GitHub Pages,
+- validating Firebase rules/functions in CI,
+- deploying Firebase rules/functions from `main` once deploy credentials are configured.
 
-## Frontend Stack
+## Non-Goals
 
-- Use Svelte/SvelteKit for the UI.
-- Use vanilla Svelte CSS.
-- Do not use Tailwind.
-- Use TypeScript throughout.
-- Keep the app compatible with the existing Bun and Nix development workflow.
-- Continue using Playwright E2E tests and committed visual scenario artifacts for visible UI behavior.
+v0.1 is not trying to be the final game.
 
-## Backend Stack
+Out of scope:
 
-- Use Firebase as the backend platform.
-- Use Firestore for shared game-room state and action history.
-- Use Firebase Cloud Functions for trusted server-side work, especially hidden or private information.
-- Deploy Firebase rules and functions from CI.
+- polished art direction,
+- full animation,
+- AI opponents,
+- tablet-specific support,
+- public matchmaking,
+- chat,
+- persistent accounts beyond what is needed to identify players safely,
+- recording computed game outcomes as events.
 
-## Game Rooms
+## Frontend
 
-Game rooms should be addressable by short public codes.
+Use:
 
-- Room codes are random 4-letter strings.
-- Room codes use all capital letters, for example `ABCD`.
-- The route shape should be:
+- Svelte/SvelteKit,
+- TypeScript,
+- vanilla Svelte CSS,
+- Redux for state management,
+- Bun for package management and scripts,
+- Nix for reproducible local development.
+
+Do not use Tailwind.
+
+The app should keep the existing E2E discipline:
+
+- Playwright tests,
+- zero-pixel visual baselines,
+- numbered scenario folders,
+- generated scenario README files,
+- committed screenshots.
+
+## Backend
+
+Use Firebase:
+
+- Firestore for shared game room data and action history,
+- Cloud Functions for trusted server-side logic and hidden/private information,
+- Firestore Security Rules for client access boundaries.
+
+The Firebase project is:
 
 ```text
-/room/ABCD
+studiocity-f56c1
 ```
 
-Opening `/room/ABCD` should start a Firestore listener for that game room and replay its actions to render the UI.
+## GitHub Secrets
 
-The Firestore collection/path can be named something like:
+The Firebase web configuration has been added to GitHub Actions secrets.
+
+Script-friendly names:
+
+- `FIREBASE_API_KEY`
+- `FIREBASE_AUTH_DOMAIN`
+- `FIREBASE_PROJECT_ID`
+- `FIREBASE_STORAGE_BUCKET`
+- `FIREBASE_MESSAGING_SENDER_ID`
+- `FIREBASE_APP_ID`
+- `FIREBASE_MEASUREMENT_ID`
+- `FIREBASE_CONFIG_JSON`
+
+Vite-friendly names:
+
+- `VITE_FIREBASE_API_KEY`
+- `VITE_FIREBASE_AUTH_DOMAIN`
+- `VITE_FIREBASE_PROJECT_ID`
+- `VITE_FIREBASE_STORAGE_BUCKET`
+- `VITE_FIREBASE_MESSAGING_SENDER_ID`
+- `VITE_FIREBASE_APP_ID`
+- `VITE_FIREBASE_MEASUREMENT_ID`
+
+Still needed before CI can deploy Firebase rules or functions:
+
+- a deploy credential such as `FIREBASE_SERVICE_ACCOUNT` or an equivalent workload identity setup.
+
+The web config values are enough to initialize the frontend SDK. They are not enough to deploy Firestore rules or Cloud Functions.
+
+## Room Model
+
+Game rooms are addressed by a random four-letter code.
+
+Rules:
+
+- codes are all capital letters,
+- example: `ABCD`,
+- route shape: `/room/ABCD`.
+
+Opening `/room/ABCD` should:
+
+1. validate the room code shape,
+2. start a Firestore listener for the room,
+3. load the room action history,
+4. replay actions through Redux reducers,
+5. render the derived game UI,
+6. apply new actions as Firestore emits them.
+
+The Firestore path can start as:
 
 ```text
 game/GAME_CODE
 ```
 
-The exact schema can evolve, but the room code should remain the human-facing join key.
+The exact schema can evolve, but the human-facing room code should remain stable.
 
-## State Management
+## Event-Sourced Action Policy
 
-Use Redux for client-side state management.
+The action stream is the canonical game record.
 
-Studio City should use Redux actions as the event-sourced record of play. The stored action history is the canonical source of truth for the game room.
+Recorded actions must correspond only to user input.
 
-Reducers should derive all UI state from the action stream.
+Recorded actions must never represent computed facts.
 
-This means:
+Allowed examples:
 
-- actions represent user input,
-- reducers compute current game state,
-- selectors compute UI projections,
-- Firestore listeners hydrate and update local Redux state by replaying actions.
+- player creates room,
+- player joins room,
+- player claims or names a seat,
+- player marks ready,
+- player chooses a movie card,
+- player chooses a contract when the rules ask for that decision,
+- player confirms an explicit choice.
 
-## Event-Sourcing Policy
+Disallowed examples:
 
-Recorded game actions must correspond only to user input.
-
-Recorded game actions must never represent computed results.
-
-Examples of user-input actions:
-
-- a player creates a room,
-- a player joins a room,
-- a player chooses a movie card,
-- a player chooses a contract when eligible,
-- a player confirms a required decision.
-
-Examples of things that should not be recorded as actions:
-
-- sorted box office standings,
-- computed card assignments,
-- contract completion status,
+- box office standings,
+- awarded box office card IDs,
+- review standings,
+- awarded review card IDs,
+- computed contract order,
 - final scores,
-- derived current player order,
-- any value that reducers can recompute from earlier user input and deterministic game data.
+- contract completion booleans,
+- any other value that reducers can compute deterministically.
 
-This policy keeps replay deterministic and prevents the action log from drifting away from the rules implementation.
+Reducers and selectors derive all computed state from:
 
-## Hidden And Private Information
+- static card/rules data,
+- room metadata,
+- user-input action history.
 
-Hidden or private information must not be computed in a way that leaks through the public client.
+This keeps replay deterministic and makes the rules implementation auditable.
 
-Use Firebase Cloud Functions for trusted computation when information should be hidden from some players. Examples may include:
+## Redux Shape
 
-- private hands,
-- secret simultaneous selections before reveal,
-- any server-authoritative validation that depends on hidden data.
+The Redux store should be designed around replay.
 
-The client should receive only the information that player is allowed to know.
+Expected slices/modules:
 
-## Firestore Listening Model
+- static rules/card data,
+- current room connection state,
+- local player/session identity,
+- replayed game state,
+- derived UI selectors.
 
-When a user opens a room route:
+The Firestore listener should not directly set computed UI state. It should feed ordered actions into the replay path.
 
-1. Validate the room code shape.
-2. Start a Firestore listener for that room.
-3. Load the room action history.
-4. Replay actions through reducers.
-5. Render the current game UI from derived state.
-6. Continue applying new actions from the listener.
+## Hidden Information
 
-Reducers should be deterministic, pure, and testable.
+Hidden information must not leak through public Firestore documents or client-side computation.
 
-## Firebase Configuration And Secrets
+Use Cloud Functions for operations that require trusted hidden state, including:
 
-The project needs a script that takes the Firebase configuration stanza and turns it into GitHub repository secrets.
+- dealing private hands,
+- storing unrevealed simultaneous movie selections,
+- revealing selections only when all required players have submitted,
+- validating choices that depend on private state.
 
-The script should support configuring CI without manually copying values one by one. It should be able to set the repository secrets needed for:
+The client should only receive the information that the current player is allowed to know.
 
-- Firebase web app configuration,
-- Firebase project identification,
-- Firebase deploy authentication,
-- any Cloud Functions or rules deployment inputs.
+## v0.1 Gameplay Scope
 
-Exact secret names should be chosen when Firebase is added, but the workflow should be documented and repeatable.
+The first playable version should cover one complete 2-player game before expanding to 3-5 players.
+
+Minimum flow:
+
+1. create room,
+2. join room,
+3. assign two player seats,
+4. start game,
+5. deal private movie hands,
+6. reveal public round markets,
+7. submit simultaneous movie choices privately,
+8. reveal chosen movies after both players submit,
+9. derive forced box office and review awards,
+10. let players choose contracts in derived contract-rank order,
+11. persist only user choices as actions,
+12. repeat for five rounds,
+13. derive final scoring from reducers/selectors.
+
+The MVP can use simplified visual presentation as long as the event model and hidden-information boundaries are correct.
+
+## Firestore Sketch
+
+Initial shape can be:
+
+```text
+game/{gameCode}
+  metadata
+  publicState
+  actions/{actionId}
+  private/{playerId}
+```
+
+Guidance:
+
+- `actions` stores append-only user-input events.
+- `metadata` stores non-secret room metadata.
+- `publicState` may store public, non-authoritative convenience data only if it can be regenerated.
+- `private/{playerId}` stores data visible only to that player.
+- Cloud Functions own writes that reveal or transform hidden information.
+
+If a field is computed and can be replayed, prefer not to store it as canonical data.
+
+## Firebase Rules And Functions
+
+Firestore rules should enforce:
+
+- room documents are readable as appropriate,
+- private player documents are readable only by the matching player/session,
+- clients cannot write computed game results,
+- clients cannot write another player's private choices,
+- action writes match allowed user-input action shapes.
+
+Cloud Functions should handle:
+
+- room creation when server-side initialization is needed,
+- private hand generation,
+- simultaneous choice submission if direct client writes would leak data,
+- reveal transitions,
+- validation of choices against hidden/private state.
 
 ## CI And Deployment
 
-The existing GitHub Pages deploy workflow should continue to host the static frontend.
+Existing CI should continue to:
 
-Firebase CI should additionally be able to:
+- build the frontend,
+- run Playwright E2E tests,
+- deploy GitHub Pages PR previews,
+- deploy GitHub Pages production on `main`.
 
-- validate Firestore rules,
-- deploy Firestore rules,
-- build Cloud Functions,
-- test Cloud Functions where practical,
-- deploy Cloud Functions.
+Firebase CI should be added when implementation begins:
 
-Firebase deployment should happen through GitHub Actions using repository secrets, not local-only credentials.
+- validate Firestore rules on PRs,
+- build Cloud Functions on PRs,
+- run rules/functions tests on PRs,
+- deploy rules/functions on `main`.
 
-PRs should continue to use preview deployments for the frontend. Firebase rules/functions deployment policy for PRs should be decided carefully before implementation; the default assumption is:
+Deployment from CI is blocked until a Firebase deploy credential is added to GitHub secrets.
 
-- PRs run validation and tests,
-- merges to `main` deploy production Firebase rules and functions.
+## Config Script Requirement
 
-## Testing Strategy
+Add a script that can accept a Firebase config stanza and set repository secrets with `gh secret set`.
 
-Continue the existing E2E strategy for UI behavior:
+It should write:
 
-- Playwright,
-- zero-pixel visual baselines,
-- numbered scenario folders,
-- unified `TestStepHelper`,
-- generated scenario README files,
-- committed screenshots.
+- the individual `FIREBASE_*` secrets,
+- the individual `VITE_FIREBASE_*` secrets,
+- `FIREBASE_CONFIG_JSON`.
 
-Add focused reducer tests for the event-sourced game model. These should verify that replaying user-input actions produces the correct derived game state without recording computed actions.
+It should not print secret values after setting them.
 
-Add Firebase rules and Cloud Functions tests before relying on hidden-information behavior.
+The script should separately document the additional deploy credential required for rules/functions deployment.
 
-## Open Questions
+## Tests For v0.1
 
-- What exact Firestore document and subcollection layout should represent rooms and action streams?
-- How should player identity be represented for the MVP: anonymous session, named seat, Firebase Auth, or another lightweight identity?
-- Which actions require Cloud Function validation before being written?
-- How should simultaneous movie choices be represented so unrevealed choices stay private?
-- Should room codes avoid ambiguous letters such as `I` and `O`, or use the full `A-Z` range?
-- What is the first minimal Firebase secret set needed for CI?
+Add reducer tests that replay action histories and assert derived state.
+
+Important cases:
+
+- room creation,
+- player joins,
+- private hand assignment is not represented as a user-input action,
+- simultaneous movie choice submission,
+- reveal after all required choices exist,
+- forced box office/review award derivation,
+- contract choice order derivation,
+- five-round game end,
+- scoring derivation.
+
+Add E2E scenarios for:
+
+- homepage,
+- create room,
+- join room by code,
+- room listener renders state,
+- two-player first round happy path.
+
+Add Firebase tests for:
+
+- Firestore rule access to public room data,
+- private player data access,
+- invalid computed action writes,
+- Cloud Function validation of private choices.
+
+## Open Questions For v0.1
+
+- Should v0.1 require Firebase Auth anonymous auth, or can it use a lighter signed session token?
+- Should room codes use every `A-Z` letter or avoid ambiguous letters like `I` and `O`?
+- Should public convenience projections be stored in Firestore, or should v0.1 rely entirely on replay in the client?
+- Which Cloud Function API shape best preserves hidden information for simultaneous movie choices?
+- What exact service account or workload identity setup should be used for CI deployment?

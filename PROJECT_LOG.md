@@ -106,6 +106,30 @@
 
 > that looks great, let's merge that PR. Now we're going to ake some policy decisions for studio city that might be different for other projects. We will use firestore for the backend, we will use redux for state management and we will use redux actions to create an event-sourced system where what is recorded in the game actions alwyas corresponds *only to user input* and *never to a computed thing*, and then build reducers that show the UI for the game. We can have a collection naed soething like game/GAME_CODE where GAME_CODE is a random 4-letter string of all capital letters. Then wehn the user opens the game on room/ABCD that will start a firestore listener on that game room and replay the actions to show the UI. The UI itself will be built in svelte/sveltekit with vanilla svelte CSS (NO TAILWIND) and hidden information/private information can be coputed with cloud functions on the firebase project. We'll need a script that can take the firebase configuratoin stanza and turn it into secrets on the repo, and yoiu'll need to be able to deploy firebase rules and functions from CI. Let's start by writing an MVP_DESIGN doc that reflects all tehse decisions accurately, don't write any code yet.
 
+### Verbatim Prompt
+
+> OK that looks good. Please commit and merge that PR and then write an MVP_DESIGN.md laying out a v0.1 of this project. HEre is the setup info for firebase, set up the secrets in gh so that you can deploy what you need for the MVP. // Import the functions you need from the SDKs you need
+> import { initializeApp } from "firebase/app";
+> import { getAnalytics } from "firebase/analytics";
+> // TODO: Add SDKs for Firebase products that you want to use
+> // https://firebase.google.com/docs/web/setup#available-libraries
+>
+> // Your web app's Firebase configuration
+> // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+> const firebaseConfig = {
+>   apiKey: "AIzaSyAWLLfnpfStFLOvTrhLH89Z_jHhBNIj0ck",
+>   authDomain: "studiocity-f56c1.firebaseapp.com",
+>   projectId: "studiocity-f56c1",
+>   storageBucket: "studiocity-f56c1.firebasestorage.app",
+>   messagingSenderId: "541528776492",
+>   appId: "1:541528776492:web:e262f9c0f44c4b2d0e1689",
+>   measurementId: "G-8Q2XTSLR0S"
+> };
+>
+> // Initialize Firebase
+> const app = initializeApp(firebaseConfig);
+> const analytics = getAnalytics(app);
+
 ### Setup Notes
 
 - Goal: create a reproducible TypeScript PWA game project using a Nix flake for the development environment.
@@ -145,6 +169,10 @@
 - Added `NEW_PROJECT_SETUP.md` summarizing reusable setup decisions and lessons.
 - Rebased and merged PR #3 after discovering merge commits and squash merges are disabled for the repository.
 - Added `MVP_DESIGN.md` documenting Studio City-specific MVP policy decisions without adding implementation code.
+- Rebased and merged PR #4.
+- Added Firebase web configuration values to GitHub Actions secrets in `FIREBASE_*`, `VITE_FIREBASE_*`, and `FIREBASE_CONFIG_JSON` forms.
+- Noted that Firebase rules/functions deployment still needs a deploy credential such as `FIREBASE_SERVICE_ACCOUNT` or workload identity.
+- Reworked `MVP_DESIGN.md` into a v0.1 design document.
 
 ### Lessons Learned
 
