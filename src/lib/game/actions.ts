@@ -61,6 +61,13 @@ export type GameAction =
         round: number;
         contractId: string;
       };
+    }
+  | {
+      id?: string;
+      type: 'SUMMARY_OPENED';
+      at: number;
+      actorId: PlayerId;
+      payload: Record<string, never>;
     };
 
 export interface StoredGameAction extends GameAction {

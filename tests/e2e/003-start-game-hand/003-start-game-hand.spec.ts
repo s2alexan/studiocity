@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { MOVIE_DECK } from '../../../src/lib/game/cards';
 import { TestStepHelper } from '../helpers/test-step-helper';
 
-test.setTimeout(30000);
+test.setTimeout(60000);
 
 async function normalizeRandomGameContent(page: Page) {
   await page.evaluate(async () => {
@@ -57,22 +57,45 @@ async function normalizeRandomGameContent(page: Page) {
       stat.append('0');
       stat.setAttribute('aria-label', '0 normalized stat');
     });
-    document.querySelectorAll('.player-boards .contract-list li:not(.empty-contracts)').forEach((contract) => {
-      contract.className = 'contract-row-summary tbd';
+    const contractLists = Array.from(document.querySelectorAll('.player-boards .contract-list'));
+    const hasContracts = contractLists.some((list) => list.querySelector('li:not(.empty-contracts)'));
+    if (hasContracts) {
+      contractLists.forEach((list, index) => {
+        if (index === 0) {
+          list.innerHTML = `
+            <li class="contract-row-summary tbd">
+              <span class="contract-state-icon" aria-label="Contract is still possible">?</span>
+              <strong class="contract-value">0</strong>
+              <span class="contract-condition">
+                <strong>9-14</strong>
+                <img
+                  class="condition-icon"
+                  src="/ui/icons/star.png"
+                  alt="normalized icon"
+                  style="width: 0.82rem; height: 0.82rem; object-fit: contain;"
+                >
+              </span>
+            </li>
+          `;
+          return;
+        }
+
+        list.innerHTML = '<li class="empty-contracts">No contracts</li>';
+      });
+    }
+    document.querySelectorAll('.summary-table .final-contract').forEach((contract) => {
+      contract.className = 'contract-row-summary final-contract tbd';
       contract.innerHTML = `
         <span class="contract-state-icon" aria-label="Contract is still possible">?</span>
         <strong class="contract-value">0</strong>
-        <span class="contract-copy">
-          <span class="contract-name">Contract Name</span>
-          <span class="contract-condition">
-            <strong>9-14</strong>
-            <img
-              class="condition-icon"
-              src="/ui/icons/star.png"
-              alt="normalized icon"
-              style="width: 0.82rem; height: 0.82rem; object-fit: contain;"
-            >
-          </span>
+        <span class="contract-condition">
+          <strong>9-14</strong>
+          <img
+            class="condition-icon"
+            src="/ui/icons/star.png"
+            alt="normalized icon"
+            style="width: 0.82rem; height: 0.82rem; object-fit: contain;"
+          >
         </span>
       `;
     });
@@ -107,6 +130,38 @@ async function normalizeRoomCodeText(page: Page) {
   });
 }
 
+async function normalizeFinalSummary(page: Page) {
+  await page.evaluate(async () => {
+    document.querySelectorAll('.summary-table .bill-score, .summary-table .final-score').forEach((score) => {
+      score.textContent = '0';
+    });
+
+    document.querySelectorAll('.summary-table .final-contract').forEach((contract) => {
+      contract.className = 'contract-row-summary final-contract tbd';
+      contract.innerHTML = `
+        <span class="contract-state-icon" aria-label="Contract is still possible">?</span>
+        <strong class="contract-value">0</strong>
+        <span class="contract-condition">
+          <strong>9-14</strong>
+          <img
+            class="condition-icon"
+            src="/ui/icons/star.png"
+            alt="normalized icon"
+            style="width: 0.82rem; height: 0.82rem; object-fit: contain;"
+          >
+        </span>
+      `;
+    });
+
+    await Promise.all(
+      Array.from(document.images).map((image) => {
+        if (image.complete) return Promise.resolve();
+        return image.decode().catch(() => undefined);
+      }),
+    );
+  });
+}
+
 async function expectPlayersReceivedAwards(page: Page) {
   const summaries = await page.locator('.player-boards .board').evaluateAll((boards) => {
     return boards.map((board) => {
@@ -125,6 +180,30 @@ async function expectPlayersReceivedAwards(page: Page) {
 async function pageWithContractTurn(hostPage: Page, guestPage: Page) {
   const hostHasTurn = await hostPage.getByRole('button', { name: /^Choose / }).first().isVisible();
   return hostHasTurn ? hostPage : guestPage;
+}
+
+async function chooseNextContract(...pages: Page[]) {
+  for (let attempt = 0; attempt < 50; attempt++) {
+    for (const candidate of pages) {
+      const button = candidate.locator('.market-area button.card.contract:not([disabled])').first();
+      if ((await button.isVisible().catch(() => false)) && (await button.isEnabled().catch(() => false))) {
+        await button.click();
+        await candidate.waitForTimeout(300);
+        return;
+      }
+    }
+    await pages[0].waitForTimeout(100);
+  }
+
+  throw new Error('No page had an enabled contract choice.');
+}
+
+async function playSelectionRound(hostPage: Page, guestPage: Page) {
+  await hostPage.locator('.hand-area .card.movie.playable').first().click();
+  await guestPage.locator('.hand-area .card.movie.playable').first().click();
+  await expect(hostPage.locator('.status-strip')).toContainText('pick a contract');
+  await chooseNextContract(hostPage, guestPage);
+  await chooseNextContract(hostPage, guestPage);
 }
 
 test('started game shows the local player hand', async ({ browser, page }, testInfo) => {
@@ -238,6 +317,36 @@ test('started game shows the local player hand', async ({ browser, page }, testI
         check: async () => {
           await expect(page.locator('.market-area .card.contract')).toHaveCount(2);
           await normalizeRandomGameContent(page);
+        },
+      },
+    ],
+  });
+
+  await chooseNextContract(page, guestPage);
+
+  for (let round = 2; round <= 5; round++) {
+    await expect(page.locator('.status-strip')).toContainText(`Round ${round} of 5`);
+    await playSelectionRound(page, guestPage);
+  }
+
+  await expect(page.locator('.status-strip')).toContainText('Game complete - click here for summary');
+  await expect(page.locator('.game-over-panel')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Game complete - click here for summary' }).click();
+  await expect(page.getByRole('heading', { name: 'Game Summary' })).toBeVisible();
+  await expect(page.locator('.summary-table')).toBeVisible();
+  await expect(page.locator('.summary-table tfoot .final-score')).toHaveCount(2);
+
+  await normalizeRoomCodeText(page);
+  await normalizeFinalSummary(page);
+
+  await tester.step('game-summary', {
+    description: 'Summary opens only after the final round review',
+    verifications: [
+      {
+        spec: 'The final summary table is visible after clicking the game complete status',
+        check: async () => {
+          await expect(page.getByRole('heading', { name: 'Game Summary' })).toBeVisible();
+          await expect(page.locator('.summary-table')).toBeVisible();
         },
       },
     ],

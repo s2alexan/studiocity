@@ -6,7 +6,7 @@
   import { isGameCode, type PlayerId } from '$lib/game/actions';
   import { cardBackPath, type CardBackType } from '$lib/game/card-art';
   import { getBoxOfficeCard, getContractCard, getMovieCard, getReviewCard } from '$lib/game/cards';
-  import { claimSeat, chooseContract, joinRoom, listenToActions, listenToPrivateData } from '$lib/game/firestore';
+  import { claimSeat, chooseContract, joinRoom, listenToActions, listenToPrivateData, openSummary } from '$lib/game/firestore';
   import { callStartGame, callSubmitMovie } from '$lib/game/functions';
   import {
     conditionTokens,
@@ -146,6 +146,18 @@
     }
   }
 
+  async function handleOpenSummary() {
+    if (!isGameCode(data.code) || projection.status !== 'final_round_complete') return;
+    error = '';
+    try {
+      const { db } = getFirebaseServices();
+      const latestActionAt = store.getState().game.actions.at(-1)?.at ?? Date.now();
+      await openSummary(db, data.code, getLocalPlayerId(), latestActionAt);
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : 'Could not open summary.';
+    }
+  }
+
   function assetPath(path: string) {
     return `${base}${path}`;
   }
@@ -164,6 +176,7 @@
   function statusText() {
     if (status === 'Connecting') return 'Connecting to room';
     if (projection.status === 'lobby') return 'Waiting for players to join';
+    if (projection.status === 'final_round_complete') return 'Game complete - click here for summary';
     if (projection.status === 'game_over') return 'Final scores';
     if (projection.phase === 'selection') {
       return privateData?.chosenMovie
@@ -188,9 +201,35 @@
     return 'still possible';
   }
 
+  function statusIcon(status: ContractStatus) {
+    if (status === 'complete') return '✓';
+    if (status === 'failed') return '×';
+    return '?';
+  }
+
+  function playerBillScore(playerId: PlayerId) {
+    return (projection.playerStates[playerId]?.boxOffice ?? []).reduce(
+      (total, cardId) => total + getBoxOfficeCard(cardId).bills,
+      0,
+    );
+  }
+
+  function maxContractCount() {
+    return Math.max(0, ...projection.players.map((player) => projection.playerStates[player.id]?.contracts.length ?? 0));
+  }
+
+  function contractForPlayerAt(playerId: PlayerId, index: number) {
+    const contractId = projection.playerStates[playerId]?.contracts[index];
+    return contractId ? getContractCard(contractId) : null;
+  }
+
+  function winningScore() {
+    return Math.max(0, ...projection.players.map((player) => projection.playerStates[player.id]?.score ?? 0));
+  }
+
   const isJoined = $derived(projection.players.some((p) => p.id === localPlayerId));
   const isHost = $derived(projection.players[0]?.id === localPlayerId);
-  const canPlayCards = $derived(projection.phase === 'selection' && !privateData?.chosenMovie && !busy);
+  const canPlayCards = $derived(projection.status === 'playing' && projection.phase === 'selection' && !privateData?.chosenMovie && !busy);
 </script>
 
 <main
@@ -200,8 +239,12 @@
   <header class="cinema-header">
     <img class="title-logo" src={assetPath('/ui/studio-city-title.png')} alt="Studio City" />
     <div class="status-strip" aria-live="polite">
-      <span>{projection.status === 'playing' ? `Round ${projection.round} of 5` : `Room ${data.code}`}</span>
-      <span>{statusText()}</span>
+      <span>{projection.status === 'playing' || projection.status === 'final_round_complete' ? `Round ${projection.round} of 5` : `Room ${data.code}`}</span>
+      {#if projection.status === 'final_round_complete'}
+        <button class="summary-link" type="button" onclick={handleOpenSummary}>{statusText()}</button>
+      {:else}
+        <span>{statusText()}</span>
+      {/if}
     </div>
   </header>
 
@@ -236,14 +279,83 @@
     </div>
   {:else if projection.status === 'game_over'}
     <div class="game-over-panel glass">
-      <h1>Game Over</h1>
-      <div class="scores">
-        {#each projection.players as player}
-          <div class="score-card">
-            <h2>{player.name}</h2>
-            <p class="final-score">{projection.playerStates[player.id]?.score ?? 0} pts</p>
-          </div>
-        {/each}
+      <h1>Game Summary</h1>
+      <div class="summary-table-wrap">
+        <table class="summary-table">
+          <thead>
+            <tr>
+              <th scope="col">Score</th>
+              {#each projection.players as player}
+                <th
+                  scope="col"
+                  class:winner-column={(projection.playerStates[player.id]?.score ?? 0) === winningScore()}
+                >
+                  {player.name}
+                </th>
+              {/each}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">Bills</th>
+              {#each projection.players as player}
+                <td class:winner-column={(projection.playerStates[player.id]?.score ?? 0) === winningScore()}>
+                  <strong class="bill-score">{playerBillScore(player.id)}</strong>
+                </td>
+              {/each}
+            </tr>
+            {#each Array(maxContractCount()) as _, contractIndex}
+              <tr>
+                <th scope="row">Contract {contractIndex + 1}</th>
+                {#each projection.players as player}
+                  {@const contract = contractForPlayerAt(player.id, contractIndex)}
+                  <td class:winner-column={(projection.playerStates[player.id]?.score ?? 0) === winningScore()}>
+                    {#if contract}
+                      {@const status = contractStatus(contract, projection, player.id)}
+                      <div class="contract-row-summary final-contract {status}">
+                        <span
+                          class="contract-state-icon"
+                          aria-label={`${contract.title} is ${contractStatusLabel(status)}`}
+                        >
+                          {statusIcon(status)}
+                        </span>
+                        <strong class="contract-value">{contract.value}</strong>
+                        <span class="contract-condition">
+                          {#each conditionTokens(contract) as token}
+                            {#if token.kind === 'icon'}
+                              <img
+                                class="condition-icon"
+                                class:light-icon={token.value === 'player_to_right'}
+                                src={iconSrc(token.value)}
+                                alt={token.value.replaceAll('_', ' ')}
+                              />
+                            {:else if token.bold}
+                              <strong>{token.value}</strong>
+                            {:else}
+                              <span>{token.value}</span>
+                            {/if}
+                          {/each}
+                        </span>
+                      </div>
+                    {:else}
+                      <span class="empty-contracts">-</span>
+                    {/if}
+                  </td>
+                {/each}
+              </tr>
+            {/each}
+          </tbody>
+          <tfoot>
+            <tr>
+              <th scope="row">Total</th>
+              {#each projection.players as player}
+                <td class:winner-column={(projection.playerStates[player.id]?.score ?? 0) === winningScore()}>
+                  <strong class="final-score">{projection.playerStates[player.id]?.score ?? 0}</strong>
+                </td>
+              {/each}
+            </tr>
+          </tfoot>
+        </table>
       </div>
     </div>
   {:else}
@@ -284,7 +396,7 @@
           <div class="market-cards">
             {#each projection.market.contracts as cId}
               {@const c = getContractCard(cId)}
-              {@const canPick = projection.phase === 'contract_auction' && projection.contractPickOrder[0] === localPlayerId}
+              {@const canPick = projection.status === 'playing' && projection.phase === 'contract_auction' && projection.contractPickOrder[0] === localPlayerId}
               <button
                 type="button"
                 class="card contract {canPick ? 'pickable' : ''}"
@@ -340,26 +452,24 @@
                       class="contract-state-icon"
                       aria-label={`${contract.title} is ${contractStatusLabel(status)}`}
                     >
-                      {status === 'complete' ? '✓' : status === 'failed' ? '×' : '?'}
+                      {statusIcon(status)}
                     </span>
                     <strong class="contract-value">{contract.value}</strong>
-                    <span class="contract-copy">
-                      <span class="contract-name">{contract.title}</span>
-                      <span class="contract-condition">
-                        {#each conditionTokens(contract) as token}
-                          {#if token.kind === 'icon'}
-                            <img
-                              class="condition-icon"
-                              src={iconSrc(token.value)}
-                              alt={token.value.replaceAll('_', ' ')}
-                            />
-                          {:else if token.bold}
-                            <strong>{token.value}</strong>
-                          {:else}
-                            <span>{token.value}</span>
-                          {/if}
-                        {/each}
-                      </span>
+                    <span class="contract-condition">
+                      {#each conditionTokens(contract) as token}
+                        {#if token.kind === 'icon'}
+                          <img
+                            class="condition-icon"
+                            class:light-icon={token.value === 'player_to_right'}
+                            src={iconSrc(token.value)}
+                            alt={token.value.replaceAll('_', ' ')}
+                          />
+                        {:else if token.bold}
+                          <strong>{token.value}</strong>
+                        {:else}
+                          <span>{token.value}</span>
+                        {/if}
+                      {/each}
                     </span>
                   </li>
                 {/each}
@@ -373,7 +483,11 @@
 
       <section class="hand-area" aria-label="Your hand">
         <h2>Your Hand</h2>
-        {#if projection.phase === 'contract_auction'}
+        {#if projection.status === 'final_round_complete'}
+          <div class="auction-notice">
+            Final round complete. Use the summary link above when everyone is ready.
+          </div>
+        {:else if projection.phase === 'contract_auction'}
           <div class="auction-notice">
             {#if projection.contractPickOrder[0] === localPlayerId}
               <strong>It's your turn to pick a contract.</strong>
@@ -437,6 +551,8 @@
 
   .game-board {
     --market-card-width: clamp(80px, 8.5vw, 108px);
+    --movie-card-width: clamp(82px, 8.6vw, 108px);
+    --table-width: min(100%, calc((var(--market-card-width) * 7) + (0.5rem * 5) + 2.26rem));
     position: relative;
     min-height: 100vh;
     padding: 0.45rem clamp(1rem, 3vw, 2rem) 0.9rem;
@@ -506,11 +622,30 @@
     font-weight: 600;
   }
 
+  .summary-link {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #f8d47f;
+    font: inherit;
+    font-weight: 900;
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.18rem;
+    cursor: pointer;
+  }
+
+  .summary-link:hover,
+  .summary-link:focus-visible {
+    color: #fff4cf;
+  }
+
   .playing-state {
     display: flex;
     flex-direction: column;
     gap: 0.52rem;
-    max-width: 1280px;
+    width: var(--table-width);
+    max-width: 100%;
     margin: 0 auto;
   }
 
@@ -527,6 +662,8 @@
 
   .market-area {
     display: flex;
+    width: var(--table-width);
+    max-width: 100%;
     flex-direction: column;
     gap: 0.32rem;
     padding: 0.5rem;
@@ -613,7 +750,7 @@
   }
 
   .card.movie {
-    width: clamp(82px, 8.6vw, 108px);
+    width: var(--movie-card-width);
     aspect-ratio: 5 / 7;
   }
 
@@ -646,6 +783,8 @@
 
   .player-boards {
     display: flex;
+    width: var(--table-width);
+    max-width: 100%;
     gap: 0.58rem;
     align-items: stretch;
     min-width: 0;
@@ -751,15 +890,15 @@
   .contract-list li {
     display: flex;
     min-width: 0;
-    align-items: center;
+    align-items: flex-start;
     gap: 0.22rem;
   }
 
   .contract-value {
     flex: 0 0 auto;
-    color: #e8c77f;
     font-size: 1em;
     font-weight: 900;
+    line-height: 1.15;
   }
 
   .contract-row-summary {
@@ -784,29 +923,24 @@
     background: #76d27a;
   }
 
+  .complete .contract-value {
+    color: #76d27a;
+  }
+
   .failed .contract-state-icon {
     background: #ef5959;
+  }
+
+  .failed .contract-value {
+    color: #ef5959;
   }
 
   .tbd .contract-state-icon {
     background: #e2bf61;
   }
 
-  .contract-copy {
-    display: flex;
-    min-width: 0;
-    flex: 1;
-    align-items: baseline;
-    gap: 0.28rem;
-  }
-
-  .contract-name {
-    flex: 0 2 auto;
-    overflow: hidden;
-    color: rgba(255, 247, 231, 0.45);
-    font-weight: 400;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  .tbd .contract-value {
+    color: #e2bf61;
   }
 
   .contract-condition {
@@ -814,12 +948,11 @@
     min-width: 0;
     flex: 1 1 auto;
     align-items: center;
+    align-content: flex-start;
+    flex-wrap: wrap;
     gap: 0.12rem;
-    overflow: hidden;
     color: rgba(255, 247, 231, 0.92);
     font-weight: 800;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   .contract-condition strong {
@@ -834,12 +967,19 @@
     object-fit: contain;
   }
 
+  .light-icon {
+    filter: invert(1) brightness(1.9) drop-shadow(0 0 0.16rem rgba(255, 244, 220, 0.45));
+  }
+
   .empty-contracts {
     color: rgba(255, 247, 231, 0.42);
     font-style: italic;
   }
 
   .hand-area {
+    width: min(100%, calc((var(--movie-card-width) * 6) + (0.5rem * 5) + 1.48rem));
+    max-width: 100%;
+    align-self: center;
     padding: 0.6rem 0.74rem 0.72rem;
   }
 
@@ -862,7 +1002,7 @@
   }
 
   .glass {
-    width: min(100%, 32rem);
+    width: min(100%, 42rem);
     margin: 2rem auto 0;
     padding: 1.8rem;
     text-align: center;
@@ -920,22 +1060,67 @@
     gap: 0.6rem;
   }
 
-  .scores {
-    display: grid;
-    gap: 0.75rem;
+  .game-over-panel {
+    width: min(100%, 62rem);
   }
 
-  .score-card {
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.06);
-    padding: 0.8rem;
+  .summary-table-wrap {
+    margin-top: 1.1rem;
+    overflow-x: auto;
+  }
+
+  .summary-table {
+    width: 100%;
+    min-width: 40rem;
+    border-collapse: collapse;
+    text-align: left;
+  }
+
+  .summary-table th,
+  .summary-table td {
+    min-width: 10rem;
+    padding: 0.58rem 0.68rem;
+    border: 1px solid rgba(244, 214, 158, 0.13);
+    vertical-align: top;
+  }
+
+  .summary-table th:first-child {
+    min-width: 7rem;
+    color: rgba(255, 247, 231, 0.7);
+    font-size: 0.78rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .summary-table thead th {
+    color: #fff7e7;
+    background: rgba(255, 255, 255, 0.07);
+  }
+
+  .summary-table tbody td,
+  .summary-table tfoot td {
+    background: rgba(255, 255, 255, 0.035);
+  }
+
+  .summary-table .winner-column {
+    border-color: rgba(118, 210, 122, 0.55);
+    background: rgba(38, 66, 37, 0.42);
+  }
+
+  .bill-score,
+  .final-score {
+    color: #e8c77f;
+    font-size: 1.25rem;
+    font-weight: 900;
   }
 
   .final-score {
-    margin-bottom: 0;
-    color: #e8c77f;
+    color: #fff4cf;
     font-size: 1.5rem;
-    font-weight: 900;
+  }
+
+  .final-contract {
+    font-size: 0.86rem;
   }
 
   .error-banner {
@@ -963,6 +1148,7 @@
   @media (max-width: 760px) {
     .game-board {
       --market-card-width: 8rem;
+      --movie-card-width: 6.8rem;
       padding: 0.8rem;
     }
 
@@ -998,13 +1184,14 @@
     }
 
     .card.movie {
-      width: 6.8rem;
+      width: var(--movie-card-width);
     }
   }
 
   @media (min-width: 761px) and (max-height: 760px) {
     .game-board {
       --market-card-width: clamp(72px, 7.35vw, 94px);
+      --movie-card-width: clamp(78px, 7.9vw, 100px);
       padding-top: 0.25rem;
       padding-bottom: 0.55rem;
     }
@@ -1060,7 +1247,7 @@
     }
 
     .card.movie {
-      width: clamp(78px, 7.9vw, 100px);
+      width: var(--movie-card-width);
     }
   }
 </style>

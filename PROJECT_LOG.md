@@ -319,3 +319,24 @@
 - Added a conservative contract status evaluator based on current totals plus possible future award ranges; hidden or not-yet-computable conditions stay TBD until they can be known.
 - Restyled the start page with the same generated cinema background and Studio City title asset used in the room UI.
 - Updated E2E screenshots and normalized inserted screenshot HTML with inline icon sizing because Svelte scoped CSS does not apply to DOM built inside the test helper.
+
+### Verbatim Prompt
+
+> I Merged the PR into main.
+>
+> Now, make a new PR with the following changes:
+> - The "player to right" icon is black, so is barely visible against the dark background of the player info box. Make the icon lighter so it's visible.
+> - The UI area for face-up cards, and your hand, is too wide. Each player can have 6 cards max. Also, the most cards that can be face-up is the contracts in a 5-player game, where there is the face-down deck, and then 6 contracts. So make each UI area only as wide as is needed for the max number of cards there.
+> - The contract text no longer fits in the player info box. To fix this, remove the contract title. I know I asked for this, but I changed my mind. Also, if needed, allow the contract text to wrap to a new line, but indent the line to line up with where the text starts the line above. Don't have the new line text start underneath the pass/fail/uncertain icon, or under the contract value.
+> - The value of the contract in the player info box is currently always yellow. Instead, I want it to track the colour of the pass/failed/uncertain icon next to the contract.
+> - At the end of the fifth round, I don't want to instantly go to the summary screen. I want players to be able to see what has happened this round. So in the round and info status (right under "Studio City") at the top, just show "game complete - click here for summary", and then style it to be clearly clickable, and when any player clicks that, then it goes to the end screen. The end screen should show a table. Players are in columns. For each player the first row should be their total points from bills. And then one row for each contract, showing the same info as in the player info box, styled the same way - pass/fail, and the value, and the contract description. And then at the bottom row, a total score, and having the winner column highlighted somehow.
+
+### Setup Notes
+
+- Added a `final_round_complete` projection status so the fifth round remains visible after the last contract pick.
+- Added a `SUMMARY_OPENED` user-input action, a Firestore writer, and rules support so any player can explicitly move the shared room to the summary table.
+- Narrowed the market width to the maximum 5-player contract row: one deck plus six face-up contracts. Narrowed the hand area to six movie cards.
+- Removed contract titles from player summary rows, allowed condition text to wrap from its own text column, and colored contract values to match complete/failed/TBD status.
+- Lightened the `player_to_right` icon in contract condition text so it stays readable on dark player boxes.
+- Added a column-based final summary table with bill points, contract rows, totals, and highlighted winner columns.
+- Extended the E2E flow through all five rounds to verify that the summary table only appears after clicking the game-complete status.

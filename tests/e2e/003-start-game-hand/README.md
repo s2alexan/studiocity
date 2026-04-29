@@ -37,3 +37,11 @@ Starting a game deals a private hand and renders real Studio City movie cards fo
 - [x] A player receives the selected contract
 - [x] The remaining contract choices stay available for the next picker
 
+## Summary opens only after the final round review
+
+![Summary opens only after the final round review](./screenshots/004-game-summary.png)
+
+### Verifications
+
+- [x] The final summary table is visible after clicking the game complete status
+
