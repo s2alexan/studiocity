@@ -1,4 +1,4 @@
-import { getBoxOfficeCard, getContractCard, getReviewCard, type ContractCard } from './cards';
+import { getBoxOfficeCard, getContractCard, getMovieCard, getReviewCard, type ContractCard } from './cards';
 import type { GameProjection, PlayerState } from './reducer';
 
 export interface PlayerSummary {
@@ -154,7 +154,12 @@ export function contractStatus(
     );
   }
 
-  return projection.status === 'game_over' && contract.conditionType === 'free' ? 'complete' : 'tbd';
+  const unreleasedRankMatch = text.match(/^higher unreleased (box office|review|contract) rank than player to right$/);
+  if (unreleasedRankMatch) {
+    return unreleasedRankStatus(projection, playerId, unreleasedRankMatch[1] as 'box office' | 'review' | 'contract');
+  }
+
+  return 'tbd';
 }
 
 function roundsWithAwardsRemaining(projection: GameProjection) {
@@ -171,6 +176,42 @@ function rightNeighborState(projection: GameProjection, playerId: string) {
 
   const neighbor = playersBySeat[(playerIndex + 1) % playersBySeat.length];
   return projection.playerStates[neighbor.id];
+}
+
+function unreleasedRankStatus(
+  projection: GameProjection,
+  playerId: string,
+  rankType: 'box office' | 'review' | 'contract',
+): ContractStatus {
+  if (projection.status !== 'final_round_complete' && projection.status !== 'game_over') return 'tbd';
+
+  const ownMovieId = projection.unreleasedMovies[playerId];
+  const neighbor = rightNeighborId(projection, playerId);
+  const neighborMovieId = neighbor ? projection.unreleasedMovies[neighbor] : undefined;
+  if (!ownMovieId || !neighborMovieId) return 'tbd';
+
+  const ownMovie = getMovieCard(ownMovieId);
+  const neighborMovie = getMovieCard(neighborMovieId);
+  const ownRank = rankValue(ownMovie, rankType);
+  const neighborRank = rankValue(neighborMovie, rankType);
+  return ownRank > neighborRank ? 'complete' : 'failed';
+}
+
+function rightNeighborId(projection: GameProjection, playerId: string) {
+  const playersBySeat = [...projection.players].sort((a, b) => a.seatIndex - b.seatIndex);
+  const playerIndex = playersBySeat.findIndex((player) => player.id === playerId);
+  if (playerIndex < 0 || playersBySeat.length < 2) return null;
+
+  return playersBySeat[(playerIndex + 1) % playersBySeat.length].id;
+}
+
+function rankValue(
+  movie: ReturnType<typeof getMovieCard>,
+  rankType: 'box office' | 'review' | 'contract',
+) {
+  if (rankType === 'box office') return movie.boxOfficeRank;
+  if (rankType === 'review') return movie.reviewRank;
+  return movie.contractRank;
 }
 
 function metricRange(summary: PlayerSummary, metric: Metric, roundsRemaining: number): MetricRange {

@@ -101,16 +101,19 @@ export const submitMovie = onCall(callableOptions, async (request) => {
     }
 
     const choices: Record<string, string> = {};
+    const unreleasedMovies: Record<string, string> = {};
     let allSubmitted = true;
 
     // Read every needed private doc before writing; Firestore transactions reject
     // reads that happen after writes.
     const otherChoices: Record<string, string | null> = {};
+    const otherHands: Record<string, string[]> = {};
     for (const pId of playerIds) {
       if (pId === actorId) continue;
       const pDoc = await transaction.get(gameRef.collection('private').doc(pId));
       const pData = pDoc.data();
       otherChoices[pId] = pData?.chosenMovie ?? null;
+      otherHands[pId] = (pData?.hand as string[] | undefined) ?? [];
     }
 
     choices[actorId] = movieId;
@@ -130,6 +133,14 @@ export const submitMovie = onCall(callableOptions, async (request) => {
     transaction.update(privateRef, { hand: newHand, chosenMovie: movieId });
 
     if (allSubmitted) {
+      if (round === 5) {
+        unreleasedMovies[actorId] = newHand[0];
+        for (const pId of playerIds) {
+          if (pId === actorId) continue;
+          unreleasedMovies[pId] = otherHands[pId][0];
+        }
+      }
+
       // Clear chosenMovie for all players
       for (const pId of playerIds) {
         transaction.update(gameRef.collection('private').doc(pId), { chosenMovie: null });
@@ -143,6 +154,16 @@ export const submitMovie = onCall(callableOptions, async (request) => {
         actorId: 'SYSTEM',
         payload: { round, choices },
       });
+
+      if (round === 5) {
+        const finalActionRef = gameRef.collection('actions').doc();
+        transaction.set(finalActionRef, {
+          type: 'FINAL_MOVIES_REVEALED',
+          at: Date.now() + 1,
+          actorId: 'SYSTEM',
+          payload: { round, unreleasedMovies },
+        });
+      }
     }
   });
 

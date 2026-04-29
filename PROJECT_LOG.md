@@ -340,3 +340,20 @@
 - Lightened the `player_to_right` icon in contract condition text so it stays readable on dark player boxes.
 - Added a column-based final summary table with bill points, contract rows, totals, and highlighted winner columns.
 - Extended the E2E flow through all five rounds to verify that the summary table only appears after clicking the game-complete status.
+
+### Verbatim Prompt
+
+> I did not yet check in the PR as there are bugs:
+>
+> My hand - this area needs to be a bit wider, on one screen it wrapped, with 5 cards on one row and one card below. on another screen it didn't wrap. Ensure it's as wide as needed so it doesn't wrap, all hand cards must be in a single row.
+> It's now not clear that the contract cost (in player info box) is not part of the contract condition. So Put a colon after the cost, but before the condition text.
+> At the end of the 5th round, the contracts that compare unreleased cards with your right neighbour were still marked with question marks. But as this is the 5th round, they should now be able to pass/fail.
+> Missing or insufficient permissions error on the game summary screen. It flashes some kind of table briefly, then displays the error and goes back to showing end of 5th round. Did you use some firebase functions? Did you push the changes there? Remember you have to do this from the command line on my mac.
+
+### Setup Notes
+
+- Kept hand cards on one row by making the hand card strip non-wrapping and giving the hand panel extra width/overflow room.
+- Added a colon after contract values in player summaries and the final summary table to separate value from condition.
+- Added a final public `FINAL_MOVIES_REVEALED` action emitted by `submitMovie` on round 5 so unreleased-movie comparison contracts can resolve to pass/fail.
+- Updated scoring so unreleased-rank contracts score only when their actual final comparison succeeds.
+- The summary permission issue was caused by Firestore rules not yet being deployed to Firebase; deploy rules/functions from the Mac after landing this fix.

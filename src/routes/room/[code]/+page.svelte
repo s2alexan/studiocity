@@ -319,7 +319,7 @@
                         >
                           {statusIcon(status)}
                         </span>
-                        <strong class="contract-value">{contract.value}</strong>
+                        <strong class="contract-value">{contract.value}:</strong>
                         <span class="contract-condition">
                           {#each conditionTokens(contract) as token}
                             {#if token.kind === 'icon'}
@@ -454,7 +454,7 @@
                     >
                       {statusIcon(status)}
                     </span>
-                    <strong class="contract-value">{contract.value}</strong>
+                    <strong class="contract-value">{contract.value}:</strong>
                     <span class="contract-condition">
                       {#each conditionTokens(contract) as token}
                         {#if token.kind === 'icon'}
@@ -977,9 +977,10 @@
   }
 
   .hand-area {
-    width: min(100%, calc((var(--movie-card-width) * 6) + (0.5rem * 5) + 1.48rem));
-    max-width: 100%;
+    width: calc((var(--movie-card-width) * 6) + (0.5rem * 5) + 2.25rem);
+    max-width: calc(100vw - 2rem);
     align-self: center;
+    overflow-x: auto;
     padding: 0.6rem 0.74rem 0.72rem;
   }
 
@@ -991,6 +992,7 @@
   }
 
   .hand-cards {
+    flex-wrap: nowrap;
     margin-top: 0.44rem;
   }
 
