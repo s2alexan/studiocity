@@ -300,3 +300,22 @@
 - Reworked the room screen into a cinema-table layout with market rows, expandable player summaries, and a persistent hand area.
 - Updated E2E assertions and screenshots around the new visual structure while preserving emulator-backed game flow coverage.
 - Normalized screenshot-only room codes, contract-turn status, and contract-card opacity in E2E tests so random room IDs and auction order do not make visual baselines flaky.
+
+### Verbatim Prompt
+
+> This is looking great. I merged the PR into main. Now a few more refinements:
+> - The player info boxes have a responsive width, matching the other UI elements. I think this would look fine with 5 players, but with 2 players it results in them looking too wide. I think they should have a fixed width of 1/5 of the rest of the UI elements, that way they will always look the same with 2-5 players. I know the game only plays 2 players for now, that's fine, but I still want to style it to support 5 since that's a future addition.
+> -  I want the contracts in the player info boxes to have an icon, to the left of the cost, showing its status. If it's definitely complete, regardless of whatever else the player gets, then put a green check. If it's definitely failed, regardless of whatever else the player gets, then put a red X. If it's still possible that it could be completed, or failed, depending on what the player gets next, put a third icon (I'm not sure what this should be, but choose something that indicates very clearly its TBD status). Make the text as large as possible, but still have it fit on one line.
+> -  Also include the contract name in the status box, since there is room for it. But I want the name to be in thinner and lighter text, less noticeable, and the condition to be in bold text, much more noticeable.
+> - In the player info box, for the contracts, list icons for bills, stars, etc. - instead of spelling out "stars", "bills", etc.
+> - remove the animation that makes the player info boxes larger when you move over them. Just keep them the same size. However I want you to make it clear which info box is for that player - it doesn't have to be by size, but it should have a different border and be very clear.
+> - on the start page (currently https://s2alexan.github.io/studiocity/pr9/, although it will eventually be at https://s2alexan.github.io/studiocity/), make this UI use the same background and style as the rest of the app. You forgot to style that page.
+
+### Setup Notes
+
+- Changed player info boxes to fixed one-fifth row slots so the layout is visually consistent for 2-5 players.
+- Removed the player summary hover expansion and made the local player's box stand out with a clear green border, background, and focus-like glow.
+- Added contract summary rows with status icons, value, lighter contract name, bold condition text, and real PNG condition icons.
+- Added a conservative contract status evaluator based on current totals plus possible future award ranges; hidden or not-yet-computable conditions stay TBD until they can be known.
+- Restyled the start page with the same generated cinema background and Studio City title asset used in the room UI.
+- Updated E2E screenshots and normalized inserted screenshot HTML with inline icon sizing because Svelte scoped CSS does not apply to DOM built inside the test helper.

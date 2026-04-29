@@ -1,6 +1,6 @@
 # Homepage
 
-The Studio City app shell renders its initial blank homepage.
+The Studio City app shell renders the cinema-themed room controls.
 
 ## Homepage room controls are visible
 

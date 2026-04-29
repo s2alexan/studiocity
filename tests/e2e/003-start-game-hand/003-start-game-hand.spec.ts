@@ -58,7 +58,23 @@ async function normalizeRandomGameContent(page: Page) {
       stat.setAttribute('aria-label', '0 normalized stat');
     });
     document.querySelectorAll('.player-boards .contract-list li:not(.empty-contracts)').forEach((contract) => {
-      contract.innerHTML = '<strong>0</strong><span>Contract condition</span>';
+      contract.className = 'contract-row-summary tbd';
+      contract.innerHTML = `
+        <span class="contract-state-icon" aria-label="Contract is still possible">?</span>
+        <strong class="contract-value">0</strong>
+        <span class="contract-copy">
+          <span class="contract-name">Contract Name</span>
+          <span class="contract-condition">
+            <strong>9-14</strong>
+            <img
+              class="condition-icon"
+              src="/ui/icons/star.png"
+              alt="normalized icon"
+              style="width: 0.82rem; height: 0.82rem; object-fit: contain;"
+            >
+          </span>
+        </span>
+      `;
     });
 
     await Promise.all(
