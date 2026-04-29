@@ -158,7 +158,7 @@ export function contractStatus(
 }
 
 function roundsWithAwardsRemaining(projection: GameProjection) {
-  if (projection.status === 'game_over') return 0;
+  if (projection.status === 'game_over' || projection.status === 'final_round_complete') return 0;
   if (projection.status !== 'playing') return 5;
 
   return projection.phase === 'contract_auction' ? 5 - projection.round : 6 - projection.round;

@@ -8,7 +8,7 @@ export interface Player {
   seatIndex: number;
 }
 
-export type GameStatus = 'lobby' | 'playing' | 'game_over';
+export type GameStatus = 'lobby' | 'playing' | 'final_round_complete' | 'game_over';
 export type RoundPhase = 'selection' | 'contract_auction';
 
 export interface PlayerState {
@@ -242,7 +242,7 @@ function replay(actions: StoredGameAction[]): GameProjection {
               projection.playedMovies = {};
               
               if (projection.round === 5) {
-                projection.status = 'game_over';
+                projection.status = 'final_round_complete';
                 // Final score calculation
                 for (const p of projection.players) {
                   projection.playerStates[p.id].score = evaluateScore(projection.playerStates[p.id]);
@@ -254,6 +254,13 @@ function replay(actions: StoredGameAction[]): GameProjection {
                 setupRoundMarket(projection, rng);
               }
             }
+          }
+          break;
+        }
+
+        case 'SUMMARY_OPENED': {
+          if (projection.status === 'final_round_complete') {
+            projection.status = 'game_over';
           }
           break;
         }

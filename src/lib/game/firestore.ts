@@ -134,6 +134,16 @@ export async function chooseContract(
   } satisfies GameAction);
 }
 
+export async function openSummary(db: Firestore, gameCode: GameCode, actorId: PlayerId, afterAt: number) {
+  const actionsRef = collection(doc(db, 'game', gameCode), 'actions');
+  await addDoc(actionsRef, {
+    type: 'SUMMARY_OPENED',
+    at: Math.max(Date.now(), afterAt + 1),
+    actorId,
+    payload: {},
+  } satisfies GameAction);
+}
+
 export function listenToPrivateData(
   db: Firestore,
   gameCode: GameCode,
