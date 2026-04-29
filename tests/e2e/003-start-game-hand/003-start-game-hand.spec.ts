@@ -65,7 +65,7 @@ async function normalizeRandomGameContent(page: Page) {
           list.innerHTML = `
             <li class="contract-row-summary tbd">
               <span class="contract-state-icon" aria-label="Contract is still possible">?</span>
-              <strong class="contract-value">0</strong>
+              <strong class="contract-value">0:</strong>
               <span class="contract-condition">
                 <strong>9-14</strong>
                 <img
@@ -87,7 +87,7 @@ async function normalizeRandomGameContent(page: Page) {
       contract.className = 'contract-row-summary final-contract tbd';
       contract.innerHTML = `
         <span class="contract-state-icon" aria-label="Contract is still possible">?</span>
-        <strong class="contract-value">0</strong>
+        <strong class="contract-value">0:</strong>
         <span class="contract-condition">
           <strong>9-14</strong>
           <img
@@ -140,7 +140,7 @@ async function normalizeFinalSummary(page: Page) {
       contract.className = 'contract-row-summary final-contract tbd';
       contract.innerHTML = `
         <span class="contract-state-icon" aria-label="Contract is still possible">?</span>
-        <strong class="contract-value">0</strong>
+        <strong class="contract-value">0:</strong>
         <span class="contract-condition">
           <strong>9-14</strong>
           <img

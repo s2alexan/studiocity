@@ -30,6 +30,7 @@ export interface GameProjection {
     contracts: string[];
   };
   playedMovies: Record<PlayerId, string>;
+  unreleasedMovies: Record<PlayerId, string>;
   playerStates: Record<PlayerId, PlayerState>;
   contractPickOrder: PlayerId[]; // Who still needs to pick a contract this round
   actionCount: number;
@@ -51,6 +52,7 @@ export const initialProjection: GameProjection = {
   phase: 'selection',
   market: { boxOffice: [], reviews: [], contracts: [] },
   playedMovies: {},
+  unreleasedMovies: {},
   playerStates: {},
   contractPickOrder: [],
   actionCount: 0,
@@ -115,7 +117,8 @@ function setupRoundMarket(projection: GameProjection, rng: () => number) {
   projection.market.contracts.sort((a, b) => getContractCard(a).value - getContractCard(b).value);
 }
 
-function evaluateScore(playerState: PlayerState): number {
+function evaluateScore(projection: GameProjection, playerId: PlayerId): number {
+  const playerState = projection.playerStates[playerId];
   let score = 0;
   
   const totalBills = playerState.boxOffice.reduce((sum, id) => sum + getBoxOfficeCard(id).bills, 0);
@@ -134,7 +137,7 @@ function evaluateScore(playerState: PlayerState): number {
     if (c.conditionType === 'total_stars' && totalStars >= c.conditionTarget) complete = true;
     if (c.conditionType === 'blockbusters' && blockbusters >= c.conditionTarget) complete = true;
     if (c.conditionType === 'loved' && loved >= c.conditionTarget) complete = true;
-    if (c.conditionType === 'free') complete = true;
+    if (c.conditionType === 'free') complete = evaluateUnreleasedContract(projection, playerId, c.description);
     
     if (complete) {
       score += c.value;
@@ -142,6 +145,28 @@ function evaluateScore(playerState: PlayerState): number {
   }
 
   return score;
+}
+
+function evaluateUnreleasedContract(projection: GameProjection, playerId: PlayerId, description: string): boolean {
+  const ownMovieId = projection.unreleasedMovies[playerId];
+  const rightMovieId = rightNeighborId(projection, playerId);
+  const rightMovie = rightMovieId ? projection.unreleasedMovies[rightMovieId] : undefined;
+  if (!ownMovieId || !rightMovie) return false;
+
+  const ownMovie = getMovieCard(ownMovieId);
+  const neighborMovie = getMovieCard(rightMovie);
+
+  if (description.includes('box_office_rank_icon')) return ownMovie.boxOfficeRank > neighborMovie.boxOfficeRank;
+  if (description.includes('review_rank_icon')) return ownMovie.reviewRank > neighborMovie.reviewRank;
+  if (description.includes('contract_rank_icon')) return ownMovie.contractRank > neighborMovie.contractRank;
+  return false;
+}
+
+function rightNeighborId(projection: GameProjection, playerId: PlayerId) {
+  const playersBySeat = [...projection.players].sort((a, b) => a.seatIndex - b.seatIndex);
+  const playerIndex = playersBySeat.findIndex((player) => player.id === playerId);
+  if (playerIndex < 0 || playersBySeat.length < 2) return null;
+  return playersBySeat[(playerIndex + 1) % playersBySeat.length].id;
 }
 
 function replay(actions: StoredGameAction[]): GameProjection {
@@ -225,6 +250,11 @@ function replay(actions: StoredGameAction[]): GameProjection {
           break;
         }
 
+        case 'FINAL_MOVIES_REVEALED': {
+          projection.unreleasedMovies = action.payload.unreleasedMovies;
+          break;
+        }
+
         case 'CONTRACT_CHOSEN': {
           const pId = action.actorId;
           const { contractId } = action.payload;
@@ -245,7 +275,7 @@ function replay(actions: StoredGameAction[]): GameProjection {
                 projection.status = 'final_round_complete';
                 // Final score calculation
                 for (const p of projection.players) {
-                  projection.playerStates[p.id].score = evaluateScore(projection.playerStates[p.id]);
+                  projection.playerStates[p.id].score = evaluateScore(projection, p.id);
                 }
               } else {
                 projection.round++;

@@ -54,6 +54,16 @@ export type GameAction =
     }
   | {
       id?: string;
+      type: 'FINAL_MOVIES_REVEALED';
+      at: number;
+      actorId: PlayerId;
+      payload: {
+        round: number;
+        unreleasedMovies: Record<PlayerId, string>;
+      };
+    }
+  | {
+      id?: string;
       type: 'CONTRACT_CHOSEN';
       at: number;
       actorId: PlayerId;
