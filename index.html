@@ -7,10 +7,40 @@
     <meta name="description" content="Studio City tabletop card game PWA" />
     <link rel="manifest" href="/studiocity/manifest.webmanifest" />
     <title>Studio City</title>
-    <script type="module" crossorigin src="/studiocity/assets/index-P5u1PUxt.js"></script>
-    <link rel="stylesheet" crossorigin href="/studiocity/assets/index-BbEjzi_u.css">
+    <link href="/studiocity/_app/immutable/entry/start.3jctGOCC.js" rel="modulepreload">
+		<link href="/studiocity/_app/immutable/chunks/BxtKIUV9.js" rel="modulepreload">
+		<link href="/studiocity/_app/immutable/chunks/k19sb9Bl.js" rel="modulepreload">
+		<link href="/studiocity/_app/immutable/chunks/dUnWYJwc.js" rel="modulepreload">
+		<link href="/studiocity/_app/immutable/chunks/C5JPahEF.js" rel="modulepreload">
+		<link href="/studiocity/_app/immutable/entry/app.uvDKWe_8.js" rel="modulepreload">
+		<link href="/studiocity/_app/immutable/chunks/B1FNCGql.js" rel="modulepreload">
+		<link href="/studiocity/_app/immutable/chunks/Dv-x2s49.js" rel="modulepreload">
+		<link href="/studiocity/_app/immutable/chunks/C5m2t-3y.js" rel="modulepreload">
+		<link href="/studiocity/_app/immutable/chunks/D_QUaLaX.js" rel="modulepreload">
+		<link href="/studiocity/_app/immutable/chunks/CwvwnX_s.js" rel="modulepreload">
+		<link href="/studiocity/_app/immutable/nodes/0.apOmIst-.js" rel="modulepreload">
+		
+		<link href="/studiocity/_app/immutable/assets/0.DE1AaY8s.css" rel="stylesheet">
   </head>
-  <body>
-    <main id="app"></main>
+  <body data-sveltekit-preload-data="hover">
+    <div style="display: contents">
+			<script>
+				{
+					__sveltekit_1sdmipp = {
+						base: "/studiocity",
+						assets: "/studiocity"
+					};
+
+					const element = document.currentScript.parentElement;
+
+					Promise.all([
+						import("/studiocity/_app/immutable/entry/start.3jctGOCC.js"),
+						import("/studiocity/_app/immutable/entry/app.uvDKWe_8.js")
+					]).then(([kit, app]) => {
+						kit.start(app, element);
+					});
+				}
+			</script>
+		</div>
   </body>
 </html>
