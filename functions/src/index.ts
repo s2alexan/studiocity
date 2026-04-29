@@ -7,6 +7,7 @@ initializeApp();
 const MOVIE_IDS = Array.from({ length: 31 }).map((_, i) => `_movie_${i + 1}`);
 const callableOptions = {
   cors: [
+    'https://anicolao.github.io',
     'https://s2alexan.github.io',
     'http://127.0.0.1:5173',
     'http://127.0.0.1:4173',

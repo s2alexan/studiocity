@@ -22,7 +22,7 @@ function withoutBunNodeShim(pathValue) {
 }
 
 run('node', ['scripts/free-emulator-ports.mjs']);
-run('bun', ['run', 'build:functions']);
+run('npm', ['run', 'build:functions']);
 
 const env = {
   ...process.env,
@@ -50,7 +50,7 @@ run(
     'studiocity-f56c1',
     '--only',
     'firestore,functions',
-    'bun run dev:e2e',
+    'npm run dev:e2e',
   ],
   { env },
 );

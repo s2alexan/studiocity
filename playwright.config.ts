@@ -50,7 +50,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'bun run dev:e2e:emulated',
+    command: 'node scripts/run-emulated-dev.mjs',
     url: 'http://127.0.0.1:5173',
     reuseExistingServer: !process.env.CI,
     timeout: process.env.CI ? 60000 : 60000,
