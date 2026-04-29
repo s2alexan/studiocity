@@ -35,17 +35,32 @@ async function normalizeRandomGameContent(page: Page) {
     document.querySelectorAll<HTMLImageElement>('.hand-area .card.movie.playable img').forEach((image) => {
       image.src = fixedArt.movie;
     });
+    document.querySelectorAll('.player-boards .stat').forEach((stat) => {
+      const image = stat.querySelector('img')?.cloneNode(true);
+      stat.replaceChildren();
+      if (image) stat.append(image);
+      stat.append('0');
+      stat.setAttribute('aria-label', '0 normalized stat');
+    });
+    document.querySelectorAll('.player-boards .contract-list li:not(.empty-contracts)').forEach((contract) => {
+      contract.innerHTML = '<strong>0</strong><span>Contract condition</span>';
+    });
   });
 }
 
-async function normalizeContractCounts(page: Page) {
-  await page.evaluate(() => {
-    document.querySelectorAll('.stats span').forEach((element) => {
-      if (element.textContent?.startsWith('Con:')) {
-        element.textContent = 'Con: #';
-      }
+async function expectPlayersReceivedAwards(page: Page) {
+  const summaries = await page.locator('.player-boards .board').evaluateAll((boards) => {
+    return boards.map((board) => {
+      const labels = Array.from(board.querySelectorAll('.stat')).map((stat) => stat.getAttribute('aria-label') ?? '');
+      const bills = Number(labels.find((label) => label.endsWith(' bills'))?.match(/^\d+/)?.[0] ?? 0);
+      const stars = Number(labels.find((label) => label.endsWith(' stars'))?.match(/^\d+/)?.[0] ?? 0);
+      return { bills, stars };
     });
   });
+
+  expect(summaries).toHaveLength(2);
+  expect(summaries.every((summary) => summary.bills > 0)).toBe(true);
+  expect(summaries.every((summary) => summary.stars > 0)).toBe(true);
 }
 
 async function pageWithContractTurn(hostPage: Page, guestPage: Page) {
@@ -137,12 +152,9 @@ test('started game shows the local player hand', async ({ browser, page }, testI
   await expect(guestMovieCards).toHaveCount(6);
   await guestPage.locator('.hand-area .card.movie.playable').first().click();
 
-  await expect(page.getByText('Phase: contract auction')).toBeVisible();
-  await expect(page.getByText('BO: 1')).toHaveCount(2);
-  await expect(page.getByText('Rev: 1')).toHaveCount(2);
+  await expect(page.locator('.status-strip')).toContainText('pick a contract');
+  await expectPlayersReceivedAwards(page);
   const contractPickerPage = await pageWithContractTurn(page, guestPage);
-
-  await normalizeRandomGameContent(page);
 
   await tester.step('contract-auction', {
     description: 'Submitted movies advance the game to contract selection',
@@ -150,14 +162,13 @@ test('started game shows the local player hand', async ({ browser, page }, testI
       {
         spec: 'The round advances to the contract auction phase',
         check: async () => {
-          await expect(page.getByText('Phase: contract auction')).toBeVisible();
+          await expect(page.locator('.status-strip')).toContainText('pick a contract');
         },
       },
       {
         spec: 'Both players received box office and review cards',
         check: async () => {
-          await expect(page.getByText('BO: 1')).toHaveCount(2);
-          await expect(page.getByText('Rev: 1')).toHaveCount(2);
+          await expectPlayersReceivedAwards(page);
           await normalizeRandomGameContent(page);
         },
       },
@@ -172,7 +183,7 @@ test('started game shows the local player hand', async ({ browser, page }, testI
       {
         spec: 'A player receives the selected contract',
         check: async () => {
-          await expect(page.getByText('Con: 1')).toHaveCount(1);
+          await expect(page.locator('.player-boards .contract-list li:not(.empty-contracts)')).toHaveCount(1);
         },
       },
       {
@@ -180,7 +191,6 @@ test('started game shows the local player hand', async ({ browser, page }, testI
         check: async () => {
           await expect(page.locator('.market-area .card.contract')).toHaveCount(2);
           await normalizeRandomGameContent(page);
-          await normalizeContractCounts(page);
         },
       },
     ],

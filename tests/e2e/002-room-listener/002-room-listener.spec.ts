@@ -16,7 +16,7 @@ test('room listener replays joined player action', async ({ page }, testInfo) =>
       {
         spec: 'Room code is visible in the join panel',
         check: async () => {
-          await expect(page.getByText('ABCD')).toBeVisible();
+          await expect(page.getByText('Room ABCD')).toBeVisible();
         },
       },
     ],
