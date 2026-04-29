@@ -264,3 +264,38 @@
 - Collapsed box office face art to one shared PNG per bill value at `static/card-art/faces/money/`.
 - Collapsed review face art to one shared PNG per review type at `static/card-art/faces/review/`.
 - Kept duplicated movie and contract faces because those cards have distinct rendered content.
+
+### Verbatim Prompt
+
+> I want to change the UI. Before we make any actual code changes, I want you to mock up the UI using generated mocked up screenshots, and we will iterate that way, until we find something I like.
+> - At the very top, it should say "Studio City", in a fun movie-themed font
+> - Below that, it should have the current round shown (Round x of 5), and also the status , for example "waiting for players to play movie cards", "your turn to pick a contract", etc.
+> - For the market below that, it should show three rows of cards. Row 1: The stack of face-down box office cards, then the turned-over box office cards for that round. There should be enough space for 5 of them. Row 2: The stack of face-down review cards, then the turned-over review cards for that round. There should be enough space for 5 of them. Row 3: The stack of face-down contract cards, then the turned-over contract cards for that round. There should be enough space for 6 of them.
+> - Below that should be a row with an info box for every player, with a summary of all players' important info: number of bills, number of stars, number of "loved" (hearts), number of "blockbusters" (tickets), and a written list of all contracts. Each contract should be shown as a single text line, with the contract value as well. The player's info box should be largest, but if players mouse over (or tap, on mobile) another player's box, then that box should temporarily become the largest.
+> - Below that should be the player's hand. It should show all their movie cards.
+> - I want this all beautifully laid out, like a real professional digital adaptation of a card game, high budget production, like a paid app on Steam would be. I like things simple and clean, not ornate, but I will want it looking a bit like a cinema/movie theme (but subtle).
+
+### Verbatim Prompt
+
+> That's very good. I like most of it. Make these changes:
+> - Make the face-down box office, review, and contract decks the right aspect ratio - they are not square.
+> - No need for the text labels for the 3 decks.
+> - Box office, review, and contract cards need to all be the same size. And no need for the empty card spaces to the right of the cards.
+> - Contracts inside the info box do not need the plus in front of the value. Also, I need the contract condition, not the contract title.
+> - no need for the UI buttons in the top right of the screen.
+
+### Verbatim Prompt
+
+> OK, this is great. Now I want you to make the actual changes to the app, as a new PR. Carefully follow these notes:
+> - I like the background, and the "Studio City" letters at the top. Generate clean versions of those assets and include them in the game.
+> - For the card fronts and card backs, use the existing png assets you already have. Don't try to make new cards in the style of this mockup. I want you to use this mockup for the UI layout only, not new card art.
+> - For the icons in the player boxes, use the actual png icons, rather than these new ones you made up, since the actual ones will match the icons on the cards. You can find them in /downloads/links on my drive.
+> - You'll need to update all the tests, then run them again of course, fixing any errors.
+
+### Setup Notes
+
+- Generated clean `static/ui/cinema-background.png` and `static/ui/studio-city-title.png` assets from the approved UI mockup direction.
+- Kept all card fronts and backs on the existing exported card PNG assets; the mockup is used only for layout and table atmosphere.
+- Copied the real Component Studio icon PNGs into `static/ui/icons/` for player summary stats.
+- Reworked the room screen into a cinema-table layout with market rows, expandable player summaries, and a persistent hand area.
+- Updated E2E assertions and screenshots around the new visual structure while preserving emulator-backed game flow coverage.
