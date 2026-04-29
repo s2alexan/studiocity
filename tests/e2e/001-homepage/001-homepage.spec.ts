@@ -3,7 +3,7 @@ import { TestStepHelper } from '../helpers/test-step-helper';
 
 test('homepage renders', async ({ page }, testInfo) => {
   const tester = new TestStepHelper(page, testInfo);
-  tester.setMetadata('Homepage', 'The Studio City app shell renders its initial blank homepage.');
+  tester.setMetadata('Homepage', 'The Studio City app shell renders the cinema-themed room controls.');
 
   await page.goto('/');
 
@@ -13,7 +13,7 @@ test('homepage renders', async ({ page }, testInfo) => {
       {
         spec: 'The welcome heading is visible',
         check: async () => {
-          await expect(page.getByRole('heading', { name: 'welcome to studio city' })).toBeVisible();
+          await expect(page.getByRole('heading', { name: 'Welcome to Studio City' })).toBeVisible();
         },
       },
       {

@@ -8,7 +8,12 @@
   import { getBoxOfficeCard, getContractCard, getMovieCard, getReviewCard } from '$lib/game/cards';
   import { claimSeat, chooseContract, joinRoom, listenToActions, listenToPrivateData } from '$lib/game/firestore';
   import { callStartGame, callSubmitMovie } from '$lib/game/functions';
-  import { contractConditionText, summarizePlayerState } from '$lib/game/player-summary';
+  import {
+    conditionTokens,
+    contractStatus,
+    summarizePlayerState,
+    type ContractStatus,
+  } from '$lib/game/player-summary';
   import { replayActions, setLocalPlayerId } from '$lib/game/reducer';
   import { getLocalPlayerId } from '$lib/game/session';
   import { store } from '$lib/game/store';
@@ -23,7 +28,6 @@
   let localPlayerId = $state<PlayerId | null>(null);
   let privateData = $state<{ hand: string[]; chosenMovie: string | null } | null>(null);
   let busy = $state(false);
-  let expandedPlayerId = $state<PlayerId | null>(null);
 
   const unsubscribeStore = store.subscribe(() => {
     projection = store.getState().game.projection;
@@ -174,8 +178,14 @@
     return 'Live';
   }
 
-  function togglePlayerBoard(playerId: PlayerId) {
-    expandedPlayerId = expandedPlayerId === playerId ? null : playerId;
+  function iconSrc(iconName: string) {
+    return assetPath(`/ui/icons/${iconName}.png`);
+  }
+
+  function contractStatusLabel(status: ContractStatus) {
+    if (status === 'complete') return 'definitely complete';
+    if (status === 'failed') return 'definitely failed';
+    return 'still possible';
   }
 
   const isJoined = $derived(projection.players.some((p) => p.id === localPlayerId));
@@ -296,15 +306,7 @@
         {#each projection.players as player}
           {@const pState = projection.playerStates[player.id]}
           {@const summary = summarizePlayerState(pState)}
-          <article
-            class="board {player.id === localPlayerId ? 'my-board' : ''} {expandedPlayerId === player.id ? 'expanded-board' : ''}"
-          >
-            <button
-              class="board-toggle"
-              type="button"
-              aria-label={`Expand ${player.name} summary`}
-              onclick={() => togglePlayerBoard(player.id)}
-            ></button>
+          <article class="board {player.id === localPlayerId ? 'my-board' : ''}">
             <div class="board-heading">
               <h2>{player.name}</h2>
               {#if player.id === localPlayerId}
@@ -332,7 +334,34 @@
             <ul class="contract-list" aria-label={`${player.name} contracts`}>
               {#if summary.contracts.length}
                 {#each summary.contracts as contract}
-                  <li><strong>{contract.value}</strong><span>{contractConditionText(contract)}</span></li>
+                  {@const status = contractStatus(contract, projection, player.id)}
+                  <li class="contract-row-summary {status}">
+                    <span
+                      class="contract-state-icon"
+                      aria-label={`${contract.title} is ${contractStatusLabel(status)}`}
+                    >
+                      {status === 'complete' ? '✓' : status === 'failed' ? '×' : '?'}
+                    </span>
+                    <strong class="contract-value">{contract.value}</strong>
+                    <span class="contract-copy">
+                      <span class="contract-name">{contract.title}</span>
+                      <span class="contract-condition">
+                        {#each conditionTokens(contract) as token}
+                          {#if token.kind === 'icon'}
+                            <img
+                              class="condition-icon"
+                              src={iconSrc(token.value)}
+                              alt={token.value.replaceAll('_', ' ')}
+                            />
+                          {:else if token.bold}
+                            <strong>{token.value}</strong>
+                          {:else}
+                            <span>{token.value}</span>
+                          {/if}
+                        {/each}
+                      </span>
+                    </span>
+                  </li>
                 {/each}
               {:else}
                 <li class="empty-contracts">No contracts</li>
@@ -620,54 +649,30 @@
     gap: 0.58rem;
     align-items: stretch;
     min-width: 0;
+    overflow-x: auto;
+    padding-bottom: 0.1rem;
   }
 
   .board {
     position: relative;
     display: flex;
-    flex: 1 1 0;
+    flex: 0 0 calc((100% - 2.32rem) / 5);
     min-width: 0;
-    min-height: 6.5rem;
+    min-height: 7.2rem;
     flex-direction: column;
-    gap: 0.42rem;
+    gap: 0.38rem;
     padding: 0.55rem 0.64rem;
     overflow: hidden;
-    transition: flex 0.2s ease, transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
-  }
-
-  .board:hover,
-  .expanded-board {
-    flex-grow: 2.5;
-    transform: translateY(-0.22rem);
-    border-color: rgba(244, 214, 158, 0.34);
-    outline: none;
-  }
-
-  .board-toggle {
-    position: absolute;
-    inset: 0;
-    z-index: 2;
-    border: 0;
-    border-radius: inherit;
-    background: transparent;
-    cursor: pointer;
-  }
-
-  .board-toggle:focus-visible {
-    outline: 3px solid rgba(244, 214, 158, 0.55);
-    outline-offset: -3px;
-  }
-
-  .board > :not(.board-toggle) {
-    position: relative;
-    z-index: 1;
-    pointer-events: none;
+    transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
   }
 
   .my-board {
-    flex-grow: 2.1;
-    border-color: rgba(244, 214, 158, 0.42);
-    background: rgba(23, 20, 17, 0.82);
+    border-color: rgba(107, 184, 118, 0.9);
+    background: linear-gradient(180deg, rgba(33, 41, 29, 0.88), rgba(19, 22, 18, 0.82));
+    box-shadow:
+      inset 0 0 0 1px rgba(177, 237, 151, 0.2),
+      0 0 0 1px rgba(82, 172, 101, 0.28),
+      0 1.15rem 2.25rem rgba(0, 0, 0, 0.28);
   }
 
   .board-heading {
@@ -733,31 +738,100 @@
     min-height: 0;
     flex: 1;
     flex-direction: column;
-    gap: 0.2rem;
+    gap: 0.16rem;
     margin: 0;
     padding: 0;
     overflow: hidden;
     color: rgba(255, 247, 231, 0.8);
-    font-size: 0.7rem;
-    line-height: 1.2;
+    font-size: clamp(0.58rem, 0.78vw, 0.78rem);
+    line-height: 1.1;
     list-style: none;
   }
 
   .contract-list li {
     display: flex;
     min-width: 0;
-    gap: 0.32rem;
+    align-items: center;
+    gap: 0.22rem;
   }
 
-  .contract-list strong {
+  .contract-value {
     flex: 0 0 auto;
     color: #e8c77f;
+    font-size: 1em;
+    font-weight: 900;
   }
 
-  .contract-list span {
+  .contract-row-summary {
+    min-height: 1.18rem;
+  }
+
+  .contract-state-icon {
+    display: inline-flex;
+    flex: 0 0 0.95rem;
+    width: 0.95rem;
+    height: 0.95rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    color: #0e0c0b;
+    font-size: 0.66rem;
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  .complete .contract-state-icon {
+    background: #76d27a;
+  }
+
+  .failed .contract-state-icon {
+    background: #ef5959;
+  }
+
+  .tbd .contract-state-icon {
+    background: #e2bf61;
+  }
+
+  .contract-copy {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    align-items: baseline;
+    gap: 0.28rem;
+  }
+
+  .contract-name {
+    flex: 0 2 auto;
     overflow: hidden;
+    color: rgba(255, 247, 231, 0.45);
+    font-weight: 400;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .contract-condition {
+    display: inline-flex;
+    min-width: 0;
+    flex: 1 1 auto;
+    align-items: center;
+    gap: 0.12rem;
+    overflow: hidden;
+    color: rgba(255, 247, 231, 0.92);
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .contract-condition strong {
+    color: #fff4dc;
+    font-weight: 900;
+  }
+
+  .condition-icon {
+    width: 0.82rem;
+    height: 0.82rem;
+    flex: 0 0 auto;
+    object-fit: contain;
   }
 
   .empty-contracts {
