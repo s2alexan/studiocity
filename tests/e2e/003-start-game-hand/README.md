@@ -17,7 +17,7 @@ Starting a game deals a private hand and renders real Studio City movie cards fo
 ### Verifications
 
 - [x] The local player sees six dealt movie cards
-- [x] Every dealt card title comes from the real card export
+- [x] Every dealt card image comes from the real card export
 
 ## Submitted movies advance the game to contract selection
 

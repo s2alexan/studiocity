@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
+  import CardImage from '$lib/components/CardImage.svelte';
   import { getFirebaseServices } from '$lib/firebase/config';
   import { isGameCode, type PlayerId } from '$lib/game/actions';
   import { getBoxOfficeCard, getContractCard, getMovieCard, getReviewCard } from '$lib/game/cards';
@@ -199,8 +200,8 @@
             <div class="cards">
               {#each projection.market.boxOffice as cId}
                 {@const c = getBoxOfficeCard(cId)}
-                <div class="card box-office">
-                  <span class="value">{c.bills} Bills</span>
+                <div class="card box-office" aria-label={`${c.bills} bill box office card`}>
+                  <CardImage card={c} />
                 </div>
               {/each}
             </div>
@@ -211,8 +212,8 @@
             <div class="cards">
               {#each projection.market.reviews as cId}
                 {@const c = getReviewCard(cId)}
-                <div class="card review">
-                  <span class="value">{c.stars} Stars</span>
+                <div class="card review" aria-label={`${c.stars} star review card`}>
+                  <CardImage card={c} />
                 </div>
               {/each}
             </div>
@@ -231,28 +232,15 @@
                   aria-label={canPick ? `Choose ${c.title}` : `${c.title} is not available until your contract turn`}
                   onclick={() => handleChooseContract(cId)}
                 >
-                  <strong>{c.title}</strong>
-                  <span class="value">{c.value} pts</span>
-                  <span class="desc">{c.description}</span>
+                  <CardImage card={c} />
+                  <span class="sr-only">{c.title}</span>
+                  <span class="sr-only value">{c.value} pts</span>
+                  <span class="sr-only desc">{c.description}</span>
                 </button>
               {/each}
             </div>
           </div>
         </div>
-      </div>
-
-      <div class="player-boards">
-        {#each projection.players as player}
-          {@const pState = projection.playerStates[player.id]}
-          <div class="board {player.id === localPlayerId ? 'my-board' : ''}">
-            <h3>{player.name} {player.id === localPlayerId ? '(You)' : ''}</h3>
-            <div class="stats">
-              <span>BO: {pState?.boxOffice.length ?? 0}</span>
-              <span>Rev: {pState?.reviews.length ?? 0}</span>
-              <span>Con: {pState?.contracts.length ?? 0}</span>
-            </div>
-          </div>
-        {/each}
       </div>
 
       <div class="hand-area">
@@ -266,16 +254,20 @@
                 {#each privateData.hand as movieId}
                   {@const m = getMovieCard(movieId)}
                   {#if m}
-                    <!-- svelte-ignore a11y_click_events_have_key_events -->
-                    <!-- svelte-ignore a11y_no_static_element_interactions -->
-                    <div class="card movie playable" onclick={() => handlePlayMovie(movieId)}>
-                      <strong>{m.title}</strong>
-                      <div class="ranks">
-                        <span class="r-bo" title="Box Office Rank">{m.boxOfficeRank}</span>
-                        <span class="r-rev" title="Review Rank">{m.reviewRank}</span>
-                        <span class="r-con" title="Contract Rank">{m.contractRank}</span>
-                      </div>
-                    </div>
+                    <button
+                      type="button"
+                      class="card movie playable"
+                      aria-label={`Play ${m.title}`}
+                      onclick={() => handlePlayMovie(movieId)}
+                    >
+                      <CardImage card={m} />
+                      <span class="sr-only">{m.title}</span>
+                      <span class="sr-only ranks">
+                        <span class="r-bo">Box office rank {m.boxOfficeRank}</span>
+                        <span class="r-rev">Review rank {m.reviewRank}</span>
+                        <span class="r-con">Contract rank {m.contractRank}</span>
+                      </span>
+                    </button>
                   {:else}
                     <div class="card movie">
                       <strong>Unknown movie</strong>
@@ -300,6 +292,20 @@
           </div>
         {/if}
       </div>
+
+      <div class="player-boards">
+        {#each projection.players as player}
+          {@const pState = projection.playerStates[player.id]}
+          <div class="board {player.id === localPlayerId ? 'my-board' : ''}">
+            <h3>{player.name} {player.id === localPlayerId ? '(You)' : ''}</h3>
+            <div class="stats">
+              <span>BO: {pState?.boxOffice.length ?? 0}</span>
+              <span>Rev: {pState?.reviews.length ?? 0}</span>
+              <span>Con: {pState?.contracts.length ?? 0}</span>
+            </div>
+          </div>
+        {/each}
+      </div>
     </div>
   {/if}
 </main>
@@ -313,13 +319,33 @@
   }
 
   .game-board {
-    padding: 2rem;
+    padding: 1.5rem 2rem;
     max-width: 1200px;
     margin: 0 auto;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: 1rem;
+  }
+
+  .playing-state {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .game-header h1,
+  .market-area h2,
+  .hand-area h2,
+  .deck-group h3,
+  .board h3 {
+    margin: 0;
+  }
+
+  .market-decks {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
   }
 
   .glass {
@@ -383,36 +409,46 @@
 
   .cards {
     display: flex;
-    gap: 1rem;
+    gap: 0.75rem;
     flex-wrap: wrap;
-    margin-top: 1rem;
+    margin-top: 0.75rem;
+    align-items: flex-start;
   }
 
   .card {
-    background: #2a2a2a;
+    background: transparent;
     border: 0;
     color: inherit;
     font: inherit;
-    border-radius: 12px;
-    padding: 1rem;
-    width: 120px;
-    height: 160px;
+    border-radius: 8px;
+    padding: 0;
+    width: min(32vw, 118px);
+    aspect-ratio: 5 / 7;
     display: flex;
-    flex-direction: column;
     justify-content: center;
     align-items: center;
     text-align: center;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-    transition: transform 0.2s;
+    transition: transform 0.2s, filter 0.2s, outline-color 0.2s;
   }
 
   .card:disabled {
     cursor: not-allowed;
+    opacity: 0.78;
   }
 
-  .card.movie {
-    background: linear-gradient(135deg, #374151, #1f2937);
-    justify-content: space-between;
+  .card.box-office,
+  .card.review,
+  .card.contract {
+    width: min(28vw, 156px);
+    aspect-ratio: 7 / 5;
+  }
+
+  :global(.card-art) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.36));
   }
 
   .playable:hover, .pickable:hover {
@@ -422,7 +458,8 @@
   }
 
   .pickable {
-    border: 2px solid #8b5cf6;
+    outline: 3px solid #8b5cf6;
+    outline-offset: 4px;
     animation: pulse 2s infinite;
   }
 
@@ -431,10 +468,6 @@
     70% { box-shadow: 0 0 0 10px rgba(139, 92, 246, 0); }
     100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
   }
-
-  .card.box-office { border-top: 6px solid #10b981; }
-  .card.review { border-top: 6px solid #fbbf24; }
-  .card.contract { border-top: 6px solid #6366f1; }
 
   .ranks {
     display: flex;
@@ -448,8 +481,9 @@
 
   .deck-group {
     background: rgba(0,0,0,0.2);
-    padding: 1rem;
-    border-radius: 12px;
+    padding: 0.9rem;
+    border-radius: 8px;
+    min-width: 0;
   }
 
   .player-boards {
@@ -460,7 +494,7 @@
   .board {
     flex: 1;
     background: #222;
-    padding: 1rem;
+    padding: 0.8rem 1rem;
     border-radius: 8px;
     border: 1px solid #333;
   }
@@ -476,11 +510,43 @@
     font-size: 0.9rem;
   }
 
+  @media (max-width: 760px) {
+    .game-board {
+      padding: 1rem;
+    }
+
+    .market-decks {
+      grid-template-columns: 1fr;
+    }
+
+    .card {
+      width: min(30vw, 112px);
+    }
+
+    .card.box-office,
+    .card.review,
+    .card.contract {
+      width: min(44vw, 156px);
+    }
+  }
+
   .error-banner {
     background: #ef4444;
     color: white;
     padding: 1rem;
     border-radius: 8px;
     text-align: center;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 </style>

@@ -10,14 +10,21 @@ async function normalizeRandomGameContent(page: Page) {
       document.activeElement.blur();
     }
 
-    document.querySelectorAll('.market-area .card .value').forEach((element) => {
-      element.textContent = element.textContent?.includes('pts') ? '0 pts' : '0';
+    const fixedArt = {
+      movie: '/card-art/faces/movie_1.png',
+      boxOffice: '/card-art/faces/money/1.png',
+      review: '/card-art/faces/review/1.png',
+      contract: '/card-art/faces/contract_1.png',
+    };
+
+    document.querySelectorAll<HTMLImageElement>('.market-area .card.box-office img').forEach((image) => {
+      image.src = fixedArt.boxOffice;
     });
-    document.querySelectorAll('.market-area .card.contract strong').forEach((element, index) => {
-      element.textContent = `Contract ${index + 1}`;
+    document.querySelectorAll<HTMLImageElement>('.market-area .card.review img').forEach((image) => {
+      image.src = fixedArt.review;
     });
-    document.querySelectorAll('.market-area .card.contract .desc').forEach((element) => {
-      element.textContent = 'Contract condition';
+    document.querySelectorAll<HTMLImageElement>('.market-area .card.contract img').forEach((image) => {
+      image.src = fixedArt.contract;
     });
     document.querySelectorAll('.market-area .card.contract.pickable').forEach((element) => {
       element.classList.remove('pickable');
@@ -25,13 +32,8 @@ async function normalizeRandomGameContent(page: Page) {
     document.querySelectorAll('.auction-notice').forEach((element) => {
       element.textContent = 'Contract selection is active.';
     });
-    document.querySelectorAll('.hand-area .card.movie.playable').forEach((card, index) => {
-      const title = card.querySelector('strong');
-      if (title) title.textContent = `Movie ${index + 1}`;
-
-      card.querySelectorAll('.ranks span').forEach((rank) => {
-        rank.textContent = '0';
-      });
+    document.querySelectorAll<HTMLImageElement>('.hand-area .card.movie.playable img').forEach((image) => {
+      image.src = fixedArt.movie;
     });
   });
 }
@@ -101,10 +103,14 @@ test('started game shows the local player hand', async ({ browser, page }, testI
   await page.getByRole('button', { name: 'Start Game' }).click();
 
   const movieTitles = MOVIE_DECK.map((movie) => movie.title);
-  const hostMovieCards = page.locator('.hand-area .card.movie.playable strong');
+  const hostMovieCards = page.locator('.hand-area .card.movie.playable');
+  const hostMovieImages = page.locator('.hand-area .card.movie.playable img.card-art');
 
   await expect(hostMovieCards).toHaveCount(6);
-  const dealtTitles = await hostMovieCards.allTextContents();
+  await expect(hostMovieImages).toHaveCount(6);
+  const dealtTitles = await hostMovieImages.evaluateAll((images) =>
+    images.map((image) => image.getAttribute('alt') ?? ''),
+  );
   expect(dealtTitles.every((title) => movieTitles.includes(title))).toBe(true);
 
   await normalizeRandomGameContent(page);
@@ -119,7 +125,7 @@ test('started game shows the local player hand', async ({ browser, page }, testI
         },
       },
       {
-        spec: 'Every dealt card title comes from the real card export',
+        spec: 'Every dealt card image comes from the real card export',
         check: async () => expect(dealtTitles.every((title) => movieTitles.includes(title))).toBe(true),
       },
     ],
@@ -127,7 +133,7 @@ test('started game shows the local player hand', async ({ browser, page }, testI
 
   await page.locator('.hand-area .card.movie.playable').first().click();
 
-  const guestMovieCards = guestPage.locator('.hand-area .card.movie.playable strong');
+  const guestMovieCards = guestPage.locator('.hand-area .card.movie.playable');
   await expect(guestMovieCards).toHaveCount(6);
   await guestPage.locator('.hand-area .card.movie.playable').first().click();
 

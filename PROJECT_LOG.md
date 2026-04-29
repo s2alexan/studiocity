@@ -235,3 +235,32 @@
 ### Verbatim Prompt
 
 > That looks right! integrate the real cards into the implementation. Also when we started a game, we didn't see our hands, make sure the UI shows each player their hand.
+
+### Verbatim Prompt
+
+> OK, this looks good, I merged the PR into main. Next I want to fix the card appearance - the ones in the app don't look like my actual cards. You can examine the png's in /downloads/Studio City - card design.
+> - movie cards are portrait, all other cards are landscape
+> - all movie cards have the same back, all box office cards have the same back, all reviews have the same back, and all contracts have the same back. In the folder each card has a custom unique png for its back, but that's just an artifact of the component.studio export.
+> - the contract_condition in the csv file uses tags recognized by component.studio. <ccb></ccb> tags, these are just formatting to make that text bold. Also, it refers to images using <image_name /> tags. You can find the actual images themselves in /downloads/links
+>
+> You can decide how to implement them. You can use my pngs, or you can render them on your own. But make them look the same. As a suggestion, since there are only 5 box office card types, and 5 review card types, it might not be worth it to render these from scratch, just using the pre-rendered pngs might make sense. But for the contract cards, maybe you want to reconstruct the card using background, text, and the icons provided. On the other hand maybe you might find it easier to just use the contract pngs themselves.
+>
+> Just as always, implement this as a PR
+
+### Setup Notes
+
+- Inspected the Component Studio PNG export in `~/Downloads/Studio City - card design` and shared assets in `~/Downloads/links`.
+- Chose pre-rendered card art for all card faces to maximize visual fidelity quickly.
+- Rotated box office, review, and contract exports 90 degrees because their PNG files are portrait-shaped but the intended card design is landscape.
+- Added normalized web-sized card art under `static/card-art` instead of committing the full print-sized export.
+- Updated E2E screenshots so the hand and market show real card art while normalizing random card choices to stable images for snapshot reliability.
+
+### Verbatim Prompt
+
+> There are only 4 types of money cards, and 4 types of review cards. There were png's for all of them in the links directory only because that's the way component.studio does its exports. Fix everything up such that you're only using 1 png for each type of money/review card, even though there are multiple copies of it.
+
+### Setup Notes
+
+- Collapsed box office face art to one shared PNG per bill value at `static/card-art/faces/money/`.
+- Collapsed review face art to one shared PNG per review type at `static/card-art/faces/review/`.
+- Kept duplicated movie and contract faces because those cards have distinct rendered content.
