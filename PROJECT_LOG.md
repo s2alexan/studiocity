@@ -299,3 +299,4 @@
 - Copied the real Component Studio icon PNGs into `static/ui/icons/` for player summary stats.
 - Reworked the room screen into a cinema-table layout with market rows, expandable player summaries, and a persistent hand area.
 - Updated E2E assertions and screenshots around the new visual structure while preserving emulator-backed game flow coverage.
+- Normalized screenshot-only room codes, contract-turn status, and contract-card opacity in E2E tests so random room IDs and auction order do not make visual baselines flaky.

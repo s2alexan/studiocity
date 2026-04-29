@@ -5,7 +5,16 @@ import { TestStepHelper } from '../helpers/test-step-helper';
 test.setTimeout(30000);
 
 async function normalizeRandomGameContent(page: Page) {
-  await page.evaluate(() => {
+  await page.evaluate(async () => {
+    function replaceTextNode(element: Element, nextText: string) {
+      const textNode = Array.from(element.childNodes).find((node) => node.nodeType === Node.TEXT_NODE);
+      if (textNode?.nodeValue !== undefined) {
+        textNode.nodeValue = nextText;
+      } else {
+        element.textContent = nextText;
+      }
+    }
+
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
@@ -26,11 +35,17 @@ async function normalizeRandomGameContent(page: Page) {
     document.querySelectorAll<HTMLImageElement>('.market-area .card.contract img').forEach((image) => {
       image.src = fixedArt.contract;
     });
-    document.querySelectorAll('.market-area .card.contract.pickable').forEach((element) => {
+    document.querySelectorAll<HTMLElement>('.market-area .card.contract').forEach((element) => {
       element.classList.remove('pickable');
+      element.style.opacity = '0.72';
     });
     document.querySelectorAll('.auction-notice').forEach((element) => {
-      element.textContent = 'Contract selection is active.';
+      replaceTextNode(element, 'Contract selection is active.');
+    });
+    document.querySelectorAll('.status-strip span:nth-child(2)').forEach((element) => {
+      if (element.textContent?.includes('pick a contract')) {
+        replaceTextNode(element, 'Contract selection');
+      }
     });
     document.querySelectorAll<HTMLImageElement>('.hand-area .card.movie.playable img').forEach((image) => {
       image.src = fixedArt.movie;
@@ -44,6 +59,34 @@ async function normalizeRandomGameContent(page: Page) {
     });
     document.querySelectorAll('.player-boards .contract-list li:not(.empty-contracts)').forEach((contract) => {
       contract.innerHTML = '<strong>0</strong><span>Contract condition</span>';
+    });
+
+    await Promise.all(
+      Array.from(document.images).map((image) => {
+        if (image.complete) return Promise.resolve();
+        return image.decode().catch(() => undefined);
+      }),
+    );
+  });
+}
+
+async function normalizeRoomCodeText(page: Page) {
+  await page.evaluate(() => {
+    function replaceTextNode(element: Element, replacer: (text: string) => string) {
+      const textNode = Array.from(element.childNodes).find((node) => node.nodeType === Node.TEXT_NODE);
+      if (textNode?.nodeValue !== undefined) {
+        textNode.nodeValue = replacer(textNode.nodeValue);
+      } else {
+        element.textContent = replacer(element.textContent ?? '');
+      }
+    }
+
+    document.querySelectorAll('.status-strip span:first-child').forEach((element) => {
+      replaceTextNode(element, (text) => text.replace(/Room [A-Z]{4}/, 'Room TEST'));
+    });
+
+    document.querySelectorAll('.lobby-panel h1').forEach((element) => {
+      replaceTextNode(element, (text) => text.replace(/Lobby: [A-Z]{4}/, 'Lobby: TEST'));
     });
   });
 }
@@ -75,23 +118,10 @@ test('started game shows the local player hand', async ({ browser, page }, testI
     'Starting a game deals a private hand and renders real Studio City movie cards for the local player.',
   );
 
-  await page.addInitScript(() => {
-    const originalGetRandomValues = crypto.getRandomValues.bind(crypto);
-    Object.defineProperty(crypto, 'getRandomValues', {
-      value(array: Uint8Array) {
-        if (array instanceof Uint8Array && array.length === 4) {
-          array.set([7, 0, 13, 3]);
-          return array;
-        }
-
-        return originalGetRandomValues(array);
-      },
-    });
-  });
-
   await page.goto('/');
   await page.getByLabel('Player name').fill('Host');
   await page.getByRole('button', { name: 'Create room' }).click();
+  await normalizeRoomCodeText(page);
 
   await tester.step('host-lobby', {
     description: 'Host creates a room',
@@ -100,6 +130,7 @@ test('started game shows the local player hand', async ({ browser, page }, testI
         spec: 'The host lobby is visible',
         check: async () => {
           await expect(page.getByRole('heading', { name: /^Lobby:/ })).toBeVisible();
+          await normalizeRoomCodeText(page);
         },
       },
     ],
