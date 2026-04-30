@@ -42,9 +42,6 @@ async function normalizeRandomGameContent(page: Page) {
     document.querySelectorAll<HTMLElement>('.played-movie-slot.active-player').forEach((element) => {
       element.classList.remove('active-player');
     });
-    document.querySelectorAll('.auction-notice').forEach((element) => {
-      replaceTextNode(element, 'Contract selection is active.');
-    });
     document.querySelectorAll('.status-strip span:nth-child(2)').forEach((element) => {
       if (element.textContent?.includes('pick a contract')) {
         replaceTextNode(element, 'Contract selection');

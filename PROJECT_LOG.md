@@ -416,3 +416,13 @@
 - Rebuilt each deck stack from 10 real card-back images, offset up and left from a bottom card that aligns with the face-up card row.
 - Removed opacity fading from the deal animation and added a card-back overlay so each dealt card appears to come off the deck face-down, flip, and land face-up.
 - Changed the played-movie row so it stays hidden while the local player still has their hand, then replaces the hand after local selection and shows only players who have actually selected until the reveal.
+
+### Verbatim Prompt
+
+> - box office, review, and contract card dealing animations at beginning of round are not quite right. As each card flips off the deck, it needs to flip FROM its face-down side, and then onto its face-up side, and then stay on its face-up side. Currently, it flips from its face-down side, onto another face-down side, then changes to face-up without flipping, then changes again to face-down.
+> - remove the status box at the bottom of the screen (e.g. displays "Waiting for Player1 to pick a contract...", etc.), as it's redundant with the status at the top of the screen
+
+### Setup Notes
+
+- Reworked market card dealing so the card container moves from the deck while the back overlay and front image perform one coordinated face-down-to-face-up flip.
+- Removed the redundant bottom status notice below the play area; the top status strip remains the single source of visible game status.
