@@ -435,3 +435,13 @@
 
 - Made the deal-animation card-back overlay disappear after the halfway point of the flip so the final resting card cannot remain visually face-down.
 - Fixed the resting CSS state too: because the animation uses `backwards`, the card-back overlay must be hidden in the base style after the animation completes.
+
+### Verbatim Prompt
+
+> slow down the card flipping animation by half. Also, once all players have selected movie cards, and the correct UI boxes are hidden and shown, and all those animations have played for all players, THEN make sure the selected movie cards all flip over onto their face up side, animated, slowly. This must happen BEFORE box office and review cards are distributed.
+
+### Setup Notes
+
+- Doubled the market-card deal/flip animation duration while leaving the existing animation speed variable in place for future tuning.
+- Added a presentation-only movie reveal gate in the room UI: after `MOVIES_REVEALED`, the table briefly holds the pre-award state with all selected movie backs visible, then flips the selected movie cards face-up, then releases the awarded box office/review state.
+- Kept this as UI staging only; the event-sourced game actions and Cloud Functions behavior are unchanged.
