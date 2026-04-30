@@ -15,12 +15,14 @@
     summarizePlayerState,
     type ContractStatus,
   } from '$lib/game/player-summary';
-  import { replayActions, setLocalPlayerId } from '$lib/game/reducer';
+  import { replayActions, setLocalPlayerId, type GameProjection } from '$lib/game/reducer';
   import { getLocalPlayerId } from '$lib/game/session';
   import { store } from '$lib/game/store';
 
   const { data } = $props<{ data: { code: string } }>();
   const DECK_LAYER_COUNT = 10;
+  const MOVIE_SELECTION_SETTLE_MS = GAME_ANIMATION_SPEED_MS * 1.05;
+  const MOVIE_REVEAL_MS = GAME_ANIMATION_SPEED_MS * 1.6;
 
   let name = $state('Player');
   let status = $state('Connecting');
@@ -33,9 +35,25 @@
   let animationsDisabled = $state(false);
   let contractAwardKey = $state('');
   let pendingSelectedMovieId = $state<string | null>(null);
+  let stagedTableProjection = $state<GameProjection | null>(null);
+  let stagedPlayedMovies = $state<Record<PlayerId, string>>({});
+  let movieRevealStage = $state<'idle' | 'settling' | 'revealing'>('idle');
+  let movieRevealTimers: number[] = [];
 
   const unsubscribeStore = store.subscribe(() => {
-    projection = store.getState().game.projection;
+    const nextProjection = store.getState().game.projection;
+    if (
+      !animationsDisabled &&
+      nextProjection.lastActionType === 'MOVIES_REVEALED' &&
+      projection.lastActionType !== 'MOVIES_REVEALED' &&
+      projection.gameCode === nextProjection.gameCode &&
+      projection.status === 'playing' &&
+      projection.players.length === nextProjection.players.length
+    ) {
+      stageMovieReveal(projection, nextProjection);
+    }
+
+    projection = nextProjection;
     localPlayerId = store.getState().game.localPlayerId;
   });
 
@@ -87,12 +105,42 @@
   });
 
   onDestroy(unsubscribeStore);
+  onDestroy(clearMovieRevealTimers);
 
   $effect(() => {
     if (localPlayerId && projection.playedMovies[localPlayerId]) {
       pendingSelectedMovieId = null;
     }
   });
+
+  function clearMovieRevealTimers() {
+    movieRevealTimers.forEach((timer) => window.clearTimeout(timer));
+    movieRevealTimers = [];
+  }
+
+  function stageMovieReveal(beforeReveal: GameProjection, afterReveal: GameProjection) {
+    clearMovieRevealTimers();
+    stagedTableProjection = structuredClone(beforeReveal);
+    stagedTableProjection.playedMovies = {};
+    stagedTableProjection.selectedMoviePlayers = Object.fromEntries(
+      Object.keys(afterReveal.playedMovies).map((playerId) => [playerId, true]),
+    );
+    stagedPlayedMovies = { ...afterReveal.playedMovies };
+    movieRevealStage = 'settling';
+
+    movieRevealTimers = [
+      window.setTimeout(() => {
+        movieRevealStage = 'revealing';
+      }, MOVIE_SELECTION_SETTLE_MS),
+      window.setTimeout(() => {
+        stagedTableProjection = null;
+        stagedPlayedMovies = {};
+        movieRevealStage = 'idle';
+      }, MOVIE_SELECTION_SETTLE_MS + MOVIE_REVEAL_MS),
+    ];
+  }
+
+  const tableProjection = $derived(stagedTableProjection ?? projection);
 
   async function join() {
     if (!isGameCode(data.code)) return;
@@ -193,17 +241,19 @@
 
   function statusText() {
     if (status === 'Connecting') return 'Connecting to room';
-    if (projection.status === 'lobby') return 'Waiting for players to join';
-    if (projection.status === 'final_round_complete') return 'Game complete - click here for summary';
-    if (projection.status === 'game_over') return 'Final scores';
-    if (projection.phase === 'selection') {
+    if (tableProjection.status === 'lobby') return 'Waiting for players to join';
+    if (tableProjection.status === 'final_round_complete') return 'Game complete - click here for summary';
+    if (tableProjection.status === 'game_over') return 'Final scores';
+    if (movieRevealStage === 'settling') return 'Revealing selected movie cards';
+    if (movieRevealStage === 'revealing') return 'Movie cards revealed';
+    if (tableProjection.phase === 'selection') {
       return privateData?.chosenMovie
         ? 'Waiting for players to play movie cards'
         : 'Waiting for players to play movie cards';
     }
-    if (projection.phase === 'contract_auction') {
-      if (projection.contractPickOrder[0] === localPlayerId) return 'Your turn to pick a contract';
-      const picker = projection.players.find((p) => p.id === projection.contractPickOrder[0]);
+    if (tableProjection.phase === 'contract_auction') {
+      if (tableProjection.contractPickOrder[0] === localPlayerId) return 'Your turn to pick a contract';
+      const picker = tableProjection.players.find((p) => p.id === tableProjection.contractPickOrder[0]);
       return `Waiting for ${picker?.name ?? 'another player'} to pick a contract`;
     }
     return 'Live';
@@ -233,35 +283,37 @@
   }
 
   function playerBillScore(playerId: PlayerId) {
-    return (projection.playerStates[playerId]?.boxOffice ?? []).reduce(
+    return (tableProjection.playerStates[playerId]?.boxOffice ?? []).reduce(
       (total, cardId) => total + getBoxOfficeCard(cardId).bills,
       0,
     );
   }
 
   function maxContractCount() {
-    return Math.max(0, ...projection.players.map((player) => projection.playerStates[player.id]?.contracts.length ?? 0));
+    return Math.max(0, ...tableProjection.players.map((player) => tableProjection.playerStates[player.id]?.contracts.length ?? 0));
   }
 
   function contractForPlayerAt(playerId: PlayerId, index: number) {
-    const contractId = projection.playerStates[playerId]?.contracts[index];
+    const contractId = tableProjection.playerStates[playerId]?.contracts[index];
     return contractId ? getContractCard(contractId) : null;
   }
 
   function winningScore() {
-    return Math.max(0, ...projection.players.map((player) => projection.playerStates[player.id]?.score ?? 0));
+    return Math.max(0, ...tableProjection.players.map((player) => tableProjection.playerStates[player.id]?.score ?? 0));
   }
 
   function selectedMovieFor(playerId: PlayerId) {
-    if (projection.playedMovies[playerId]) return projection.playedMovies[playerId];
+    if (movieRevealStage === 'revealing' && stagedPlayedMovies[playerId]) return stagedPlayedMovies[playerId];
+    if (tableProjection.playedMovies[playerId]) return tableProjection.playedMovies[playerId];
     if (playerId === localPlayerId) return privateData?.chosenMovie ?? pendingSelectedMovieId;
     return null;
   }
 
   function playerHasSelectedMovie(playerId: PlayerId) {
     return Boolean(
-      projection.playedMovies[playerId] ||
-      projection.selectedMoviePlayers[playerId] ||
+      tableProjection.playedMovies[playerId] ||
+      stagedPlayedMovies[playerId] ||
+      tableProjection.selectedMoviePlayers[playerId] ||
       (playerId === localPlayerId && (privateData?.chosenMovie || pendingSelectedMovieId)),
     );
   }
@@ -273,14 +325,15 @@
   const localPlayerHasSelected = $derived(Boolean(localPlayerId && playerHasSelectedMovie(localPlayerId)));
   const showPlayedMovies = $derived(
     localPlayerHasSelected ||
-      Object.keys(projection.playedMovies).length > 0 ||
-      projection.phase === 'contract_auction' ||
-      projection.status === 'final_round_complete',
+      Object.keys(tableProjection.playedMovies).length > 0 ||
+      Object.keys(stagedPlayedMovies).length > 0 ||
+      tableProjection.phase === 'contract_auction' ||
+      tableProjection.status === 'final_round_complete',
   );
-  const showHand = $derived(projection.status === 'playing' && projection.phase === 'selection' && !privateData?.chosenMovie && !pendingSelectedMovieId);
-  const isJoined = $derived(projection.players.some((p) => p.id === localPlayerId));
-  const isHost = $derived(projection.players[0]?.id === localPlayerId);
-  const canPlayCards = $derived(projection.status === 'playing' && projection.phase === 'selection' && !privateData?.chosenMovie && !busy);
+  const showHand = $derived(tableProjection.status === 'playing' && tableProjection.phase === 'selection' && !privateData?.chosenMovie && !pendingSelectedMovieId && movieRevealStage === 'idle');
+  const isJoined = $derived(tableProjection.players.some((p) => p.id === localPlayerId));
+  const isHost = $derived(tableProjection.players[0]?.id === localPlayerId);
+  const canPlayCards = $derived(projection.status === 'playing' && projection.phase === 'selection' && !privateData?.chosenMovie && !busy && movieRevealStage === 'idle');
 </script>
 
 <main
@@ -291,8 +344,8 @@
   <header class="cinema-header">
     <img class="title-logo" src={assetPath('/ui/studio-city-title.png')} alt="Studio City" />
     <div class="status-strip" aria-live="polite">
-      <span>{projection.status === 'playing' || projection.status === 'final_round_complete' ? `Round ${projection.round} of 5` : `Room ${data.code}`}</span>
-      {#if projection.status === 'final_round_complete'}
+      <span>{tableProjection.status === 'playing' || tableProjection.status === 'final_round_complete' ? `Round ${tableProjection.round} of 5` : `Room ${data.code}`}</span>
+      {#if tableProjection.status === 'final_round_complete'}
         <button class="summary-link" type="button" onclick={handleOpenSummary}>{statusText()}</button>
       {:else}
         <span>{statusText()}</span>
@@ -311,25 +364,25 @@
       <input bind:value={name} aria-label="Player name" placeholder="Your Name" />
       <button class="btn primary" disabled={busy} onclick={join}>Join Game</button>
     </div>
-  {:else if projection.status === 'lobby'}
+  {:else if tableProjection.status === 'lobby'}
     <div class="lobby-panel glass">
       <h1>Lobby: {data.code}</h1>
       <div class="players-list">
-        <h2>Players ({projection.players.length})</h2>
+        <h2>Players ({tableProjection.players.length})</h2>
         <ul>
-          {#each projection.players as player}
+          {#each tableProjection.players as player}
             <li>{player.name} {player.id === localPlayerId ? '(You)' : ''}</li>
           {/each}
         </ul>
       </div>
       <div class="lobby-actions">
-        {#if isHost && projection.players.length >= 2}
+        {#if isHost && tableProjection.players.length >= 2}
           <button class="btn success" disabled={busy} onclick={handleStartGame}>Start Game</button>
         {/if}
         <button class="btn secondary" onclick={handleClaimSeat}>Claim Seat</button>
       </div>
     </div>
-  {:else if projection.status === 'game_over'}
+  {:else if tableProjection.status === 'game_over'}
     <div class="game-over-panel glass">
       <h1>Game Summary</h1>
       <div class="summary-table-wrap">
@@ -337,10 +390,10 @@
           <thead>
             <tr>
               <th scope="col">Score</th>
-              {#each projection.players as player}
+              {#each tableProjection.players as player}
                 <th
                   scope="col"
-                  class:winner-column={(projection.playerStates[player.id]?.score ?? 0) === winningScore()}
+                  class:winner-column={(tableProjection.playerStates[player.id]?.score ?? 0) === winningScore()}
                 >
                   {player.name}
                 </th>
@@ -350,8 +403,8 @@
           <tbody>
             <tr>
               <th scope="row">Bills</th>
-              {#each projection.players as player}
-                <td class:winner-column={(projection.playerStates[player.id]?.score ?? 0) === winningScore()}>
+              {#each tableProjection.players as player}
+                <td class:winner-column={(tableProjection.playerStates[player.id]?.score ?? 0) === winningScore()}>
                   <strong class="bill-score">{playerBillScore(player.id)}</strong>
                 </td>
               {/each}
@@ -359,11 +412,11 @@
             {#each Array(maxContractCount()) as _, contractIndex}
               <tr>
                 <th scope="row">Contract {contractIndex + 1}</th>
-                {#each projection.players as player}
+                {#each tableProjection.players as player}
                   {@const contract = contractForPlayerAt(player.id, contractIndex)}
-                  <td class:winner-column={(projection.playerStates[player.id]?.score ?? 0) === winningScore()}>
+                  <td class:winner-column={(tableProjection.playerStates[player.id]?.score ?? 0) === winningScore()}>
                     {#if contract}
-                      {@const status = contractStatus(contract, projection, player.id)}
+                      {@const status = contractStatus(contract, tableProjection, player.id)}
                       <div class="contract-row-summary final-contract {status}">
                         <span
                           class="contract-state-icon"
@@ -400,9 +453,9 @@
           <tfoot>
             <tr>
               <th scope="row">Total</th>
-              {#each projection.players as player}
-                <td class:winner-column={(projection.playerStates[player.id]?.score ?? 0) === winningScore()}>
-                  <strong class="final-score">{projection.playerStates[player.id]?.score ?? 0}</strong>
+              {#each tableProjection.players as player}
+                <td class:winner-column={(tableProjection.playerStates[player.id]?.score ?? 0) === winningScore()}>
+                  <strong class="final-score">{tableProjection.playerStates[player.id]?.score ?? 0}</strong>
                 </td>
               {/each}
             </tr>
@@ -426,11 +479,11 @@
             {/each}
           </div>
           <div class="market-cards">
-            {#each projection.market.boxOffice as cId}
+            {#each tableProjection.market.boxOffice as cId}
               {@const c = getBoxOfficeCard(cId)}
               <div
                 class="card box-office dealt-card"
-                style={`--deal-index: ${projection.market.boxOffice.indexOf(cId)}; --deal-back: url('${deckBackSrc('boxOffice')}')`}
+                style={`--deal-index: ${tableProjection.market.boxOffice.indexOf(cId)}; --deal-back: url('${deckBackSrc('boxOffice')}')`}
                 aria-label={`${c.bills} bill box office card`}
               >
                 <CardImage card={c} />
@@ -452,11 +505,11 @@
             {/each}
           </div>
           <div class="market-cards">
-            {#each projection.market.reviews as cId}
+            {#each tableProjection.market.reviews as cId}
               {@const c = getReviewCard(cId)}
               <div
                 class="card review dealt-card"
-                style={`--deal-index: ${projection.market.reviews.indexOf(cId)}; --deal-back: url('${deckBackSrc('review')}')`}
+                style={`--deal-index: ${tableProjection.market.reviews.indexOf(cId)}; --deal-back: url('${deckBackSrc('review')}')`}
                 aria-label={`${c.stars} star review card`}
               >
                 <CardImage card={c} />
@@ -478,13 +531,13 @@
             {/each}
           </div>
           <div class="market-cards">
-            {#each projection.market.contracts as cId}
+            {#each tableProjection.market.contracts as cId}
               {@const c = getContractCard(cId)}
-              {@const canPick = projection.status === 'playing' && projection.phase === 'contract_auction' && projection.contractPickOrder[0] === localPlayerId}
+              {@const canPick = tableProjection.status === 'playing' && tableProjection.phase === 'contract_auction' && tableProjection.contractPickOrder[0] === localPlayerId}
               <button
                 type="button"
                 class="card contract dealt-card {canPick ? 'pickable' : ''}"
-                style={`--deal-index: ${projection.market.contracts.indexOf(cId)}; --deal-back: url('${deckBackSrc('contract')}')`}
+                style={`--deal-index: ${tableProjection.market.contracts.indexOf(cId)}; --deal-back: url('${deckBackSrc('contract')}')`}
                 disabled={!canPick}
                 aria-label={canPick ? `Choose ${c.title}` : `${c.title} is not available until your contract turn`}
                 onclick={() => handleChooseContract(cId)}
@@ -500,8 +553,8 @@
       </section>
 
       <section class="player-boards" aria-label="Player summaries">
-        {#each projection.players as player}
-          {@const pState = projection.playerStates[player.id]}
+        {#each tableProjection.players as player}
+          {@const pState = tableProjection.playerStates[player.id]}
           {@const summary = summarizePlayerState(pState)}
           <article class="board {player.id === localPlayerId ? 'my-board' : ''}">
             <div class="board-heading">
@@ -531,7 +584,7 @@
             <ul class="contract-list" aria-label={`${player.name} contracts`}>
               {#if summary.contracts.length}
                 {#each summary.contracts as contract}
-                  {@const status = contractStatus(contract, projection, player.id)}
+                  {@const status = contractStatus(contract, tableProjection, player.id)}
                   <li
                     class="contract-row-summary {status}"
                     class:contract-received={latestContractAward(player.id, contract.id)}
@@ -571,15 +624,16 @@
 
       {#if showPlayedMovies}
         <section class="played-movies" aria-label="Played movie cards">
-          {#each projection.players as player}
-            {@const revealedMovieId = projection.playedMovies[player.id]}
+          {#each tableProjection.players as player}
+            {@const revealedMovieId = tableProjection.playedMovies[player.id]}
             {@const selectedMovieId = selectedMovieFor(player.id)}
+            {@const visibleMovieId = movieRevealStage === 'revealing' ? selectedMovieId : revealedMovieId}
             <div
               class="played-movie-slot"
-              class:active-player={projection.contractPickOrder[0] === player.id}
+              class:active-player={tableProjection.contractPickOrder[0] === player.id}
             >
-              {#if revealedMovieId}
-                {@const movie = getMovieCard(revealedMovieId)}
+              {#if visibleMovieId}
+                {@const movie = getMovieCard(visibleMovieId)}
                 <div class="card movie played-movie-card revealed">
                   <div class="flip-card">
                     <div class="flip-face flip-back">
@@ -879,7 +933,7 @@
   .dealt-card {
     position: relative;
     overflow: hidden;
-    animation: deal-from-deck calc(var(--animation-speed) * 0.82) cubic-bezier(0.2, 0.78, 0.22, 1) backwards;
+    animation: deal-from-deck calc(var(--animation-speed) * 1.64) cubic-bezier(0.2, 0.78, 0.22, 1) backwards;
     animation-delay: calc(var(--deal-index, 0) * var(--animation-speed) * 0.16);
     transform-origin: center;
     transform-style: preserve-3d;
@@ -889,7 +943,7 @@
     position: relative;
     z-index: 1;
     backface-visibility: hidden;
-    animation: deal-card-front calc(var(--animation-speed) * 0.82) cubic-bezier(0.2, 0.78, 0.22, 1) backwards;
+    animation: deal-card-front calc(var(--animation-speed) * 1.64) cubic-bezier(0.2, 0.78, 0.22, 1) backwards;
     animation-delay: calc(var(--deal-index, 0) * var(--animation-speed) * 0.16);
   }
 
@@ -907,7 +961,7 @@
     opacity: 0;
     pointer-events: none;
     transform: rotateY(-180deg);
-    animation: deal-card-back calc(var(--animation-speed) * 0.82) cubic-bezier(0.2, 0.78, 0.22, 1) backwards;
+    animation: deal-card-back calc(var(--animation-speed) * 1.64) cubic-bezier(0.2, 0.78, 0.22, 1) backwards;
     animation-delay: calc(var(--deal-index, 0) * var(--animation-speed) * 0.16);
   }
 
@@ -1233,7 +1287,7 @@
   }
 
   .revealed .flip-card {
-    animation: reveal-movie calc(var(--animation-speed) * 1.15) ease-in-out both;
+    animation: reveal-movie calc(var(--animation-speed) * 1.6) ease-in-out both;
   }
 
   .flip-face {
