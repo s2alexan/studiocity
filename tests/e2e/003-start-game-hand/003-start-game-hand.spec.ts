@@ -243,9 +243,10 @@ test('started game shows the local player hand', async ({ browser, page }, testI
 
   const guestContext = await browser.newContext();
   const guestPage = await guestContext.newPage();
+  await guestPage.addInitScript(() => {
+    localStorage.setItem('studio-city-player-name', 'Guest');
+  });
   await guestPage.goto(`/room/${gameCode}`);
-  await guestPage.getByLabel('Player name').fill('Guest');
-  await guestPage.getByRole('button', { name: 'Join Game' }).click();
 
   await expect(page.getByText('2 of 5 seats filled')).toBeVisible();
   await page.getByRole('button', { name: 'Start Game' }).click();

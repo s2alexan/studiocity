@@ -479,3 +479,4 @@
 - GitHub Pages serves the custom 404 from the published project root, not from nested PR preview directories, so direct links like `/studiocity/pr13/room/EIZZ` need a root fallback that understands PR preview base paths.
 - Added a standalone Pages 404 redirect shim that stores the intended room route, redirects to the correct app shell (`/studiocity/` or `/studiocity/prNN/`), and lets the app restore the original route before SvelteKit boots.
 - Changed the Pages workflow to publish PR previews under `prNN/` and the shared root fallback together, preserving the existing PR link format while making copied room URLs load directly.
+- Updated room links to auto-join the visitor with their stored player name, or `Player` if they have no saved name yet, so there is no extra join-by-code step after opening an invite URL.

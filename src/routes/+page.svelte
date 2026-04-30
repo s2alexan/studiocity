@@ -1,10 +1,11 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { base } from '$app/paths';
+  import { onMount } from 'svelte';
   import { getFirebaseServices } from '$lib/firebase/config';
   import { createGameCode } from '$lib/game/actions';
   import { createRoom } from '$lib/game/firestore';
-  import { getLocalPlayerId } from '$lib/game/session';
+  import { getLocalPlayerId, getLocalPlayerName, setLocalPlayerName } from '$lib/game/session';
 
   let name = $state('Player');
   let error = $state('');
@@ -14,13 +15,19 @@
     return `${base}${path}`;
   }
 
+  onMount(() => {
+    name = getLocalPlayerName() ?? 'Player';
+  });
+
   async function createNewRoom() {
     error = '';
     busy = true;
     const gameCode = createGameCode();
+    const playerName = name.trim() || 'Player';
     try {
       const { db } = getFirebaseServices();
-      await createRoom(db, gameCode, getLocalPlayerId(), name.trim() || 'Player');
+      setLocalPlayerName(playerName);
+      await createRoom(db, gameCode, getLocalPlayerId(), playerName);
       await goto(`${base}/room/${gameCode}`);
     } catch (caught) {
       error = caught instanceof Error ? caught.message : 'Could not create room.';
