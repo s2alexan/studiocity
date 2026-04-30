@@ -50,6 +50,9 @@ async function normalizeRandomGameContent(page: Page) {
     document.querySelectorAll<HTMLImageElement>('.hand-area .card.movie.playable img').forEach((image) => {
       image.src = fixedArt.movie;
     });
+    document.querySelectorAll<HTMLImageElement>('.played-movies .card.movie img').forEach((image) => {
+      image.src = fixedArt.movie;
+    });
     document.querySelectorAll('.player-boards .stat').forEach((stat) => {
       const image = stat.querySelector('img')?.cloneNode(true);
       stat.replaceChildren();
@@ -65,7 +68,7 @@ async function normalizeRandomGameContent(page: Page) {
           list.innerHTML = `
             <li class="contract-row-summary tbd">
               <span class="contract-state-icon" aria-label="Contract is still possible">?</span>
-              <strong class="contract-value">0:</strong>
+              <strong class="contract-value">0:&nbsp;</strong>
               <span class="contract-condition">
                 <strong>9-14</strong>
                 <img
@@ -87,7 +90,7 @@ async function normalizeRandomGameContent(page: Page) {
       contract.className = 'contract-row-summary final-contract tbd';
       contract.innerHTML = `
         <span class="contract-state-icon" aria-label="Contract is still possible">?</span>
-        <strong class="contract-value">0:</strong>
+        <strong class="contract-value">0:&nbsp;</strong>
         <span class="contract-condition">
           <strong>9-14</strong>
           <img
@@ -132,6 +135,10 @@ async function normalizeRoomCodeText(page: Page) {
 
 async function normalizeFinalSummary(page: Page) {
   await page.evaluate(async () => {
+    document.querySelectorAll('.summary-table .winner-column').forEach((element) => {
+      element.classList.remove('winner-column');
+    });
+
     document.querySelectorAll('.summary-table .bill-score, .summary-table .final-score').forEach((score) => {
       score.textContent = '0';
     });
@@ -140,7 +147,7 @@ async function normalizeFinalSummary(page: Page) {
       contract.className = 'contract-row-summary final-contract tbd';
       contract.innerHTML = `
         <span class="contract-state-icon" aria-label="Contract is still possible">?</span>
-        <strong class="contract-value">0:</strong>
+        <strong class="contract-value">0:&nbsp;</strong>
         <span class="contract-condition">
           <strong>9-14</strong>
           <img

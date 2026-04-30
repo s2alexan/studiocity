@@ -357,3 +357,28 @@
 - Added a final public `FINAL_MOVIES_REVEALED` action emitted by `submitMovie` on round 5 so unreleased-movie comparison contracts can resolve to pass/fail.
 - Updated scoring so unreleased-rank contracts score only when their actual final comparison succeeds.
 - The summary permission issue was caused by Firestore rules not yet being deployed to Firebase; deploy rules/functions from the Mac after landing this fix.
+
+### Verbatim Prompt
+
+> Let's start some changes for a new PR. First, a couple of small changes:
+>
+> It seems in the game summary screen the failed contracts are still being added to the final score. Remember the scoring should be bills plus successfully completed contracts.
+> Also in the game summary screen, and in the player info box, when showing contracts, use an extra space in between the colon and the contract text. I think that should help separate them even more.
+>
+> Next, a big change. I want you to add animations so that it's more obvious what's happening in the game. All the instant transitions can be confusing. I want animations to move slowly - a little bit more slowly and deliberately than would be typical for a game like this, because I want to be able to see them clearly when debugging. Use a global variable for animation speed - hard code it for now but make it easy to change because I will be asking you to change animation speed in the future to tweak things.
+> - You will have to change your tests to disable animations during testing - this is fine. Because you may grab the animation at the wrong frame and then the test will fail.
+> - When players choose a movie card to play, I want the "your hand" UI box to disappear (along with all your movie cards in your hand), and the movie card they selected to flip over, and then appear underneath your player info box. And then, all the other players' selected movie cards (face down) can be shown under their player info box too, because the "your hand" UI box is gone and now there's room. Just to be clear, I don't want you showing other player's face-down movie cards below the player info box, even if that player has selected their movie card, UNTIL you have selected your movie card, because of the obvious reason that there won't be anywhere to show that movie card.
+> - Once all players have played a movie card, and they are all showing face down below the player info box, then flip all the movie cards over.
+> - Then, you can automatically give out the box office and review cards, but I want this animated, and I want it slow and deliberate. First, the highest box office card goes to the correct player. The player's movie card should be selected and pulse gently, and the box office card should be selected and pulse gently, then the card should move down to the player's info box, it should get absorbed into the info box, and then the appropriate icons should update, in an animated way, making it obvious what has been updated. Then, the next-highest box office card goes to the correct player, etc. I'm roughly specifying what I want with the animations - like when I say pulse - but I want you to use your judgement about what a typical high-budget steam card game might do for such an animation and make it look really great and professional. Don't take my animation suggestions literally if they are going to look ugly.
+> - Give out all box office and review cards this way.
+> - For the contracts, when it is a player's turn, their movie card should get selected and pulse (or whatever), and then when they select the contract, it should move down to their player info box and get absorbed, just like the other cards did, and then the contract should get added to the player info box.
+> - I also want the box office, review, and contract decks to look more like decks, right now it just looks like one face-down card. Make them look like a higher stack of cards. And then, at the beginning of each round, when you put out new cards, show them animated, coming off the top of the stacks, so it looks like they are being dealt.
+
+### Setup Notes
+
+- Changed final scoring to use the same contract status evaluator as the UI, so only completed contracts add points.
+- Added an extra visual space after contract value colons in player summaries and final summary rows.
+- Added a hard-coded `GAME_ANIMATION_SPEED_MS` speed variable and a reduced-motion/local-storage path that disables animations for E2E tests.
+- Added a played-movie row beneath player boards: the hand disappears after local selection, the local selected card appears there, and revealed round movies flip into face-up cards.
+- Added slow visual sequencing hooks for award focus, stat updates, contract receipt, market dealing, and taller-looking deck stacks while keeping recorded game actions limited to the existing event-sourced user/system actions.
+- Updated E2E screenshot normalization for the new played-movie row and regenerated affected screenshots.

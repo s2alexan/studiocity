@@ -3,6 +3,7 @@
   import { onDestroy, onMount } from 'svelte';
   import CardImage from '$lib/components/CardImage.svelte';
   import { getFirebaseServices } from '$lib/firebase/config';
+  import { GAME_ANIMATION_SPEED_MS } from '$lib/game/animation';
   import { isGameCode, type PlayerId } from '$lib/game/actions';
   import { cardBackPath, type CardBackType } from '$lib/game/card-art';
   import { getBoxOfficeCard, getContractCard, getMovieCard, getReviewCard } from '$lib/game/cards';
@@ -28,6 +29,9 @@
   let localPlayerId = $state<PlayerId | null>(null);
   let privateData = $state<{ hand: string[]; chosenMovie: string | null } | null>(null);
   let busy = $state(false);
+  let animationsDisabled = $state(false);
+  let awardStep = $state(999);
+  let contractAwardKey = $state('');
 
   const unsubscribeStore = store.subscribe(() => {
     projection = store.getState().game.projection;
@@ -35,6 +39,10 @@
   });
 
   onMount(() => {
+    animationsDisabled =
+      window.localStorage.getItem('studioCity:disableAnimations') === '1' ||
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
     if (!isGameCode(data.code)) {
       error = 'Invalid room code.';
       status = 'Error';
@@ -78,6 +86,29 @@
   });
 
   onDestroy(unsubscribeStore);
+
+  $effect(() => {
+    const key = `${projection.actionCount}:${projection.lastActionType}`;
+    const sequence = buildAwardSequence();
+    contractAwardKey =
+      projection.lastActionType === 'CONTRACT_CHOSEN' ? key : '';
+
+    if (animationsDisabled || projection.lastActionType !== 'MOVIES_REVEALED' || sequence.length === 0) {
+      awardStep = 999;
+      return;
+    }
+
+    awardStep = 0;
+    const timers = sequence.map((_, index) =>
+      window.setTimeout(() => {
+        awardStep = index + 1;
+      }, GAME_ANIMATION_SPEED_MS * (index + 1)),
+    );
+
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+    };
+  });
 
   async function join() {
     if (!isGameCode(data.code)) return;
@@ -207,6 +238,43 @@
     return '?';
   }
 
+  function awardOrder(kind: 'boxOfficeRank' | 'reviewRank') {
+    if (!Object.keys(projection.playedMovies).length) return [];
+
+    return [...projection.players].sort((a, b) => {
+      const rankA = getMovieCard(projection.playedMovies[a.id])?.[kind] ?? -1;
+      const rankB = getMovieCard(projection.playedMovies[b.id])?.[kind] ?? -1;
+      return rankB - rankA;
+    });
+  }
+
+  function buildAwardSequence() {
+    const boxOfficeAwards = awardOrder('boxOfficeRank')
+      .map((player) => ({
+        type: 'boxOffice' as const,
+        playerId: player.id,
+        cardId: projection.playerStates[player.id]?.boxOffice.at(-1),
+      }))
+      .filter((award): award is { type: 'boxOffice'; playerId: PlayerId; cardId: string } => Boolean(award.cardId));
+
+    const reviewAwards = awardOrder('reviewRank')
+      .map((player) => ({
+        type: 'review' as const,
+        playerId: player.id,
+        cardId: projection.playerStates[player.id]?.reviews.at(-1),
+      }))
+      .filter((award): award is { type: 'review'; playerId: PlayerId; cardId: string } => Boolean(award.cardId));
+
+    return [...boxOfficeAwards, ...reviewAwards];
+  }
+
+  function latestContractAward(playerId: PlayerId, contractId: string) {
+    const latestAction = store.getState().game.actions.at(-1);
+    return latestAction?.type === 'CONTRACT_CHOSEN' && latestAction.actorId === playerId && latestAction.payload.contractId === contractId
+      ? contractAwardKey
+      : '';
+  }
+
   function playerBillScore(playerId: PlayerId) {
     return (projection.playerStates[playerId]?.boxOffice ?? []).reduce(
       (total, cardId) => total + getBoxOfficeCard(cardId).bills,
@@ -227,6 +295,14 @@
     return Math.max(0, ...projection.players.map((player) => projection.playerStates[player.id]?.score ?? 0));
   }
 
+  const currentAward = $derived(buildAwardSequence()[awardStep] ?? null);
+  const showPlayedMovies = $derived(
+    Boolean(privateData?.chosenMovie) ||
+      Object.keys(projection.playedMovies).length > 0 ||
+      projection.phase === 'contract_auction' ||
+      projection.status === 'final_round_complete',
+  );
+  const showHand = $derived(projection.status === 'playing' && projection.phase === 'selection' && !privateData?.chosenMovie);
   const isJoined = $derived(projection.players.some((p) => p.id === localPlayerId));
   const isHost = $derived(projection.players[0]?.id === localPlayerId);
   const canPlayCards = $derived(projection.status === 'playing' && projection.phase === 'selection' && !privateData?.chosenMovie && !busy);
@@ -234,7 +310,8 @@
 
 <main
   class="game-board"
-  style={`--cinema-bg: url('${assetPath('/ui/cinema-background.png')}')`}
+  class:animations-disabled={animationsDisabled}
+  style={`--cinema-bg: url('${assetPath('/ui/cinema-background.png')}'); --animation-speed: ${animationsDisabled ? 1 : GAME_ANIMATION_SPEED_MS}ms;`}
 >
   <header class="cinema-header">
     <img class="title-logo" src={assetPath('/ui/studio-city-title.png')} alt="Studio City" />
@@ -319,7 +396,7 @@
                         >
                           {statusIcon(status)}
                         </span>
-                        <strong class="contract-value">{contract.value}:</strong>
+                        <strong class="contract-value">{contract.value}:&nbsp;</strong>
                         <span class="contract-condition">
                           {#each conditionTokens(contract) as token}
                             {#if token.kind === 'icon'}
@@ -368,7 +445,12 @@
           <div class="market-cards">
             {#each projection.market.boxOffice as cId}
               {@const c = getBoxOfficeCard(cId)}
-              <div class="card box-office" aria-label={`${c.bills} bill box office card`}>
+              <div
+                class="card box-office dealt-card"
+                class:award-focus={currentAward?.type === 'boxOffice' && currentAward.cardId === cId}
+                style={`--deal-index: ${projection.market.boxOffice.indexOf(cId)}`}
+                aria-label={`${c.bills} bill box office card`}
+              >
                 <CardImage card={c} />
               </div>
             {/each}
@@ -382,7 +464,12 @@
           <div class="market-cards">
             {#each projection.market.reviews as cId}
               {@const c = getReviewCard(cId)}
-              <div class="card review" aria-label={`${c.stars} star review card`}>
+              <div
+                class="card review dealt-card"
+                class:award-focus={currentAward?.type === 'review' && currentAward.cardId === cId}
+                style={`--deal-index: ${projection.market.reviews.indexOf(cId)}`}
+                aria-label={`${c.stars} star review card`}
+              >
                 <CardImage card={c} />
               </div>
             {/each}
@@ -399,7 +486,9 @@
               {@const canPick = projection.status === 'playing' && projection.phase === 'contract_auction' && projection.contractPickOrder[0] === localPlayerId}
               <button
                 type="button"
-                class="card contract {canPick ? 'pickable' : ''}"
+                class="card contract dealt-card {canPick ? 'pickable' : ''}"
+                class:award-focus={canPick && projection.contractPickOrder[0] === localPlayerId}
+                style={`--deal-index: ${projection.market.contracts.indexOf(cId)}`}
                 disabled={!canPick}
                 aria-label={canPick ? `Choose ${c.title}` : `${c.title} is not available until your contract turn`}
                 onclick={() => handleChooseContract(cId)}
@@ -428,33 +517,36 @@
             <div class="stats">
               <span class="stat" aria-label={`${summary.bills} bills`}>
                 <img src={assetPath('/ui/icons/bill.png')} alt="" />
-                {summary.bills}
+                <span class:stat-update={currentAward?.type === 'boxOffice' && currentAward.playerId === player.id}>{summary.bills}</span>
               </span>
               <span class="stat" aria-label={`${summary.stars} stars`}>
                 <img src={assetPath('/ui/icons/star.png')} alt="" />
-                {summary.stars}
+                <span class:stat-update={currentAward?.type === 'review' && currentAward.playerId === player.id}>{summary.stars}</span>
               </span>
               <span class="stat" aria-label={`${summary.loved} loved movies`}>
                 <img src={assetPath('/ui/icons/loved.png')} alt="" />
-                {summary.loved}
+                <span class:stat-update={currentAward?.type === 'review' && currentAward.playerId === player.id}>{summary.loved}</span>
               </span>
               <span class="stat" aria-label={`${summary.blockbusters} blockbusters`}>
                 <img src={assetPath('/ui/icons/blockbuster.png')} alt="" />
-                {summary.blockbusters}
+                <span class:stat-update={currentAward?.type === 'boxOffice' && currentAward.playerId === player.id}>{summary.blockbusters}</span>
               </span>
             </div>
             <ul class="contract-list" aria-label={`${player.name} contracts`}>
               {#if summary.contracts.length}
                 {#each summary.contracts as contract}
                   {@const status = contractStatus(contract, projection, player.id)}
-                  <li class="contract-row-summary {status}">
+                  <li
+                    class="contract-row-summary {status}"
+                    class:contract-received={latestContractAward(player.id, contract.id)}
+                  >
                     <span
                       class="contract-state-icon"
                       aria-label={`${contract.title} is ${contractStatusLabel(status)}`}
                     >
                       {statusIcon(status)}
                     </span>
-                    <strong class="contract-value">{contract.value}:</strong>
+                    <strong class="contract-value">{contract.value}:&nbsp;</strong>
                     <span class="contract-condition">
                       {#each conditionTokens(contract) as token}
                         {#if token.kind === 'icon'}
@@ -481,23 +573,41 @@
         {/each}
       </section>
 
-      <section class="hand-area" aria-label="Your hand">
+      {#if showPlayedMovies}
+        <section class="played-movies" aria-label="Played movie cards">
+          {#each projection.players as player}
+            {@const revealedMovieId = projection.playedMovies[player.id]}
+            {@const localChosen = player.id === localPlayerId ? privateData?.chosenMovie : null}
+            {@const movieId = revealedMovieId ?? localChosen}
+            <div
+              class="played-movie-slot"
+              class:active-player={currentAward?.playerId === player.id || projection.contractPickOrder[0] === player.id}
+            >
+              {#if movieId}
+                {@const movie = getMovieCard(movieId)}
+                <div class="card movie played-movie-card" class:face-down={!revealedMovieId && player.id !== localPlayerId}>
+                  <div class="flip-card">
+                    <div class="flip-face flip-back">
+                      <CardImage card={movie} faceUp={false} />
+                    </div>
+                    <div class="flip-face flip-front">
+                      <CardImage card={movie} />
+                    </div>
+                  </div>
+                </div>
+              {:else}
+                <div class="card movie played-movie-card face-down placeholder">
+                  <img class="card-art portrait" src={deckBackSrc('movie')} alt="Unrevealed movie card" />
+                </div>
+              {/if}
+            </div>
+          {/each}
+        </section>
+      {/if}
+
+      {#if showHand}
+        <section class="hand-area" aria-label="Your hand">
         <h2>Your Hand</h2>
-        {#if projection.status === 'final_round_complete'}
-          <div class="auction-notice">
-            Final round complete. Use the summary link above when everyone is ready.
-          </div>
-        {:else if projection.phase === 'contract_auction'}
-          <div class="auction-notice">
-            {#if projection.contractPickOrder[0] === localPlayerId}
-              <strong>It's your turn to pick a contract.</strong>
-            {:else}
-              Waiting for {projection.players.find((p) => p.id === projection.contractPickOrder[0])?.name} to pick a contract...
-            {/if}
-          </div>
-        {:else if privateData?.chosenMovie}
-          <div class="waiting-message">Waiting for players to play movie cards...</div>
-        {/if}
 
         {#if privateData?.hand?.length}
           <div class="hand-cards">
@@ -533,6 +643,19 @@
           </div>
         {/if}
       </section>
+      {:else if projection.status === 'playing' && projection.phase === 'contract_auction'}
+        <div class="auction-notice floating-notice">
+          {#if projection.contractPickOrder[0] === localPlayerId}
+            <strong>It's your turn to pick a contract.</strong>
+          {:else}
+            Waiting for {projection.players.find((p) => p.id === projection.contractPickOrder[0])?.name} to pick a contract...
+          {/if}
+        </div>
+      {:else if projection.status === 'final_round_complete'}
+        <div class="auction-notice floating-notice">
+          Final round complete. Use the summary link above when everyone is ready.
+        </div>
+      {/if}
     </div>
   {/if}
 </main>
@@ -682,7 +805,7 @@
   .market-cards,
   .hand-cards {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
     gap: 0.5rem;
     min-width: 0;
@@ -693,6 +816,7 @@
     flex: 0 0 auto;
     width: var(--market-card-width);
     aspect-ratio: 7 / 5;
+    transform-style: preserve-3d;
   }
 
   .deck-stack::before,
@@ -701,16 +825,21 @@
     inset: 0;
     content: '';
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.12);
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.24);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(43, 38, 32, 0.9);
+    box-shadow:
+      0.12rem 0.14rem 0 rgba(244, 214, 158, 0.14),
+      0.24rem 0.28rem 0 rgba(13, 12, 11, 0.88),
+      0.38rem 0.42rem 0 rgba(244, 214, 158, 0.11),
+      0 0.65rem 1rem rgba(0, 0, 0, 0.28);
   }
 
   .deck-stack::before {
-    transform: translate(0.2rem, -0.14rem);
+    transform: translate(0.28rem, -0.2rem);
   }
 
   .deck-stack::after {
-    transform: translate(0.1rem, -0.06rem);
+    transform: translate(0.14rem, -0.1rem);
   }
 
   .deck-card {
@@ -734,7 +863,11 @@
     color: inherit;
     font: inherit;
     text-align: center;
-    transition: transform 0.18s ease, filter 0.18s ease, outline-color 0.18s ease, opacity 0.18s ease;
+    transition:
+      transform calc(var(--animation-speed) * 0.18) ease,
+      filter calc(var(--animation-speed) * 0.18) ease,
+      outline-color calc(var(--animation-speed) * 0.18) ease,
+      opacity calc(var(--animation-speed) * 0.18) ease;
   }
 
   .card:disabled {
@@ -772,13 +905,56 @@
   .pickable {
     outline: 3px solid rgba(112, 178, 229, 0.94);
     outline-offset: 4px;
-    animation: pulse 2s infinite;
+    animation: pulse calc(var(--animation-speed) * 2.4) infinite;
+  }
+
+  .dealt-card {
+    animation: deal-from-deck calc(var(--animation-speed) * 0.82) cubic-bezier(0.2, 0.78, 0.22, 1) backwards;
+    animation-delay: calc(var(--deal-index, 0) * var(--animation-speed) * 0.16);
+  }
+
+  .award-focus,
+  .played-movie-slot.active-player .played-movie-card {
+    z-index: 2;
+    outline: 3px solid rgba(246, 212, 127, 0.9);
+    outline-offset: 4px;
+    animation: deliberate-focus calc(var(--animation-speed) * 1.1) ease-in-out infinite;
   }
 
   @keyframes pulse {
     0% { box-shadow: 0 0 0 0 rgba(112, 178, 229, 0.32); }
     70% { box-shadow: 0 0 0 12px rgba(112, 178, 229, 0); }
     100% { box-shadow: 0 0 0 0 rgba(112, 178, 229, 0); }
+  }
+
+  @keyframes deal-from-deck {
+    0% {
+      opacity: 0;
+      transform: translateX(calc(-1 * (var(--market-card-width) + 0.6rem))) translateY(-0.18rem) scale(0.92);
+      filter: brightness(0.86);
+    }
+    55% {
+      opacity: 1;
+      transform: translateX(0.2rem) translateY(-0.06rem) scale(1.02);
+    }
+    100% {
+      opacity: 1;
+      transform: translateX(0) translateY(0) scale(1);
+      filter: brightness(1);
+    }
+  }
+
+  @keyframes deliberate-focus {
+    0%, 100% {
+      transform: translateY(0) scale(1);
+      filter: brightness(1);
+      box-shadow: 0 0 0 0 rgba(246, 212, 127, 0.24);
+    }
+    50% {
+      transform: translateY(-0.26rem) scale(1.035);
+      filter: brightness(1.12);
+      box-shadow: 0 0 0 0.55rem rgba(246, 212, 127, 0);
+    }
   }
 
   .player-boards {
@@ -891,7 +1067,7 @@
     display: flex;
     min-width: 0;
     align-items: flex-start;
-    gap: 0.22rem;
+    gap: 0.26rem;
   }
 
   .contract-value {
@@ -955,6 +1131,27 @@
     font-weight: 800;
   }
 
+  .contract-received {
+    animation: absorb-contract calc(var(--animation-speed) * 0.95) ease-out both;
+  }
+
+  @keyframes absorb-contract {
+    0% {
+      opacity: 0;
+      transform: translateY(-1.6rem) scale(1.08);
+      filter: brightness(1.35);
+    }
+    70% {
+      opacity: 1;
+      transform: translateY(0.12rem) scale(1);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      filter: brightness(1);
+    }
+  }
+
   .contract-condition strong {
     color: #fff4dc;
     font-weight: 900;
@@ -976,12 +1173,108 @@
     font-style: italic;
   }
 
+  .stat-update {
+    display: inline-block;
+    animation: stat-pop calc(var(--animation-speed) * 0.8) ease-out both;
+  }
+
+  @keyframes stat-pop {
+    0% {
+      transform: scale(1);
+      color: inherit;
+    }
+    35% {
+      transform: scale(1.42);
+      color: #fff1aa;
+      text-shadow: 0 0 0.6rem rgba(246, 212, 127, 0.8);
+    }
+    100% {
+      transform: scale(1);
+      color: inherit;
+    }
+  }
+
+  .played-movies {
+    display: flex;
+    width: var(--table-width);
+    max-width: 100%;
+    gap: 0.58rem;
+    align-items: flex-start;
+    min-height: calc(var(--movie-card-width) * 1.42);
+    padding-bottom: 0.1rem;
+    overflow-x: auto;
+  }
+
+  .played-movie-slot {
+    display: flex;
+    flex: 0 0 calc((100% - 2.32rem) / 5);
+    justify-content: center;
+    min-width: 0;
+  }
+
+  .played-movie-card {
+    width: min(var(--movie-card-width), 100%);
+    animation: played-card-arrives calc(var(--animation-speed) * 0.95) cubic-bezier(0.2, 0.8, 0.18, 1) both;
+    perspective: 900px;
+  }
+
+  .flip-card {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    animation: reveal-movie calc(var(--animation-speed) * 1.15) ease-in-out both;
+  }
+
+  .face-down .flip-card {
+    animation: none;
+    transform: rotateY(180deg);
+  }
+
+  .flip-face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+  }
+
+  .flip-back {
+    transform: rotateY(180deg);
+  }
+
+  .placeholder {
+    opacity: 0.72;
+  }
+
+  @keyframes played-card-arrives {
+    0% {
+      opacity: 0;
+      transform: translateY(2.2rem) scale(0.88);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes reveal-movie {
+    0% {
+      transform: rotateY(180deg);
+    }
+    45% {
+      transform: rotateY(180deg) scale(1.04);
+    }
+    100% {
+      transform: rotateY(0deg) scale(1);
+    }
+  }
+
   .hand-area {
     width: calc((var(--movie-card-width) * 6) + (0.5rem * 5) + 2.25rem);
     max-width: calc(100vw - 2rem);
     align-self: center;
     overflow-x: auto;
     padding: 0.6rem 0.74rem 0.72rem;
+    animation: hand-enters calc(var(--animation-speed) * 0.6) ease-out both;
   }
 
   .hand-area h2 {
@@ -1001,6 +1294,29 @@
     margin-top: 0.45rem;
     color: rgba(255, 247, 231, 0.74);
     font-size: 0.9rem;
+  }
+
+  .floating-notice {
+    width: min(100%, 38rem);
+    align-self: center;
+    margin: 0;
+    padding: 0.55rem 0.8rem;
+    border: 1px solid rgba(244, 214, 158, 0.14);
+    border-radius: 8px;
+    background: rgba(13, 13, 12, 0.62);
+    text-align: center;
+    animation: hand-enters calc(var(--animation-speed) * 0.6) ease-out both;
+  }
+
+  @keyframes hand-enters {
+    from {
+      opacity: 0;
+      transform: translateY(0.8rem);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   .glass {
@@ -1181,7 +1497,8 @@
     }
 
     .board,
-    .my-board {
+    .my-board,
+    .played-movie-slot {
       flex: 0 0 16rem;
     }
 
@@ -1250,6 +1567,22 @@
 
     .card.movie {
       width: var(--movie-card-width);
+    }
+  }
+
+  .animations-disabled *,
+  .animations-disabled *::before,
+  .animations-disabled *::after {
+    animation: none !important;
+    transition-duration: 1ms !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation: none !important;
+      transition-duration: 1ms !important;
     }
   }
 </style>

@@ -1,0 +1,1 @@
+export const GAME_ANIMATION_SPEED_MS = 900;
