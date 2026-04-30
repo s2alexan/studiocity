@@ -638,18 +638,6 @@
           </div>
         {/if}
       </section>
-      {:else if projection.status === 'playing' && projection.phase === 'contract_auction'}
-        <div class="auction-notice floating-notice">
-          {#if projection.contractPickOrder[0] === localPlayerId}
-            <strong>It's your turn to pick a contract.</strong>
-          {:else}
-            Waiting for {projection.players.find((p) => p.id === projection.contractPickOrder[0])?.name} to pick a contract...
-          {/if}
-        </div>
-      {:else if projection.status === 'final_round_complete'}
-        <div class="auction-notice floating-notice">
-          Final round complete. Use the summary link above when everyone is ready.
-        </div>
       {/if}
     </div>
   {/if}
@@ -897,6 +885,14 @@
     transform-style: preserve-3d;
   }
 
+  .dealt-card :global(.card-art) {
+    position: relative;
+    z-index: 1;
+    backface-visibility: hidden;
+    animation: deal-card-front calc(var(--animation-speed) * 0.82) cubic-bezier(0.2, 0.78, 0.22, 1) backwards;
+    animation-delay: calc(var(--deal-index, 0) * var(--animation-speed) * 0.16);
+  }
+
   .dealt-card::before {
     position: absolute;
     inset: 0;
@@ -907,6 +903,7 @@
     background-size: contain;
     background-position: center;
     background-repeat: no-repeat;
+    backface-visibility: hidden;
     pointer-events: none;
     animation: deal-card-back calc(var(--animation-speed) * 0.82) cubic-bezier(0.2, 0.78, 0.22, 1) backwards;
     animation-delay: calc(var(--deal-index, 0) * var(--animation-speed) * 0.16);
@@ -931,32 +928,40 @@
       transform:
         translateX(calc(-1 * ((var(--deal-index, 0) + 1) * (var(--market-card-width) + 0.5rem) + 0.58rem)))
         translateY(calc(-0.4rem - (9 * 0.045rem)))
-        rotateY(180deg)
         scale(0.98);
-      filter: brightness(0.86);
+      filter: brightness(0.96);
     }
     55% {
       opacity: 1;
-      transform: translateX(0.08rem) translateY(-0.04rem) rotateY(18deg) scale(1.015);
+      transform: translateX(0.08rem) translateY(-0.04rem) scale(1.015);
     }
     100% {
-      transform: translateX(0) translateY(0) rotateY(0deg) scale(1);
+      transform: translateX(0) translateY(0) scale(1);
       filter: brightness(1);
+    }
+  }
+
+  @keyframes deal-card-front {
+    0%, 44% {
+      transform: rotateY(180deg);
+    }
+    55% {
+      transform: rotateY(90deg);
+    }
+    100% {
+      transform: rotateY(0deg);
     }
   }
 
   @keyframes deal-card-back {
     0%, 44% {
-      opacity: 1;
       transform: rotateY(0deg);
     }
     55% {
-      opacity: 0;
-      transform: rotateY(90deg);
+      transform: rotateY(-90deg);
     }
     100% {
-      opacity: 0;
-      transform: rotateY(90deg);
+      transform: rotateY(-180deg);
     }
   }
 
@@ -1284,23 +1289,10 @@
     margin-top: 0.44rem;
   }
 
-  .auction-notice,
   .waiting-message {
     margin-top: 0.45rem;
     color: rgba(255, 247, 231, 0.74);
     font-size: 0.9rem;
-  }
-
-  .floating-notice {
-    width: min(100%, 38rem);
-    align-self: center;
-    margin: 0;
-    padding: 0.55rem 0.8rem;
-    border: 1px solid rgba(244, 214, 158, 0.14);
-    border-radius: 8px;
-    background: rgba(13, 13, 12, 0.62);
-    text-align: center;
-    animation: hand-enters calc(var(--animation-speed) * 0.6) ease-out both;
   }
 
   @keyframes hand-enters {
