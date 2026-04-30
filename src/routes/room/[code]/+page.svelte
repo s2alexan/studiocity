@@ -904,7 +904,9 @@
     background-position: center;
     background-repeat: no-repeat;
     backface-visibility: hidden;
+    opacity: 0;
     pointer-events: none;
+    transform: rotateY(-180deg);
     animation: deal-card-back calc(var(--animation-speed) * 0.82) cubic-bezier(0.2, 0.78, 0.22, 1) backwards;
     animation-delay: calc(var(--deal-index, 0) * var(--animation-speed) * 0.16);
   }
@@ -955,12 +957,15 @@
 
   @keyframes deal-card-back {
     0%, 44% {
+      opacity: 1;
       transform: rotateY(0deg);
     }
     55% {
+      opacity: 0;
       transform: rotateY(-90deg);
     }
     100% {
+      opacity: 0;
       transform: rotateY(-180deg);
     }
   }
