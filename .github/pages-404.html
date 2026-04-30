@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Studio City</title>
+    <script>
+      (() => {
+        const repoBase = '__REPO_BASE__'.replace(/\/$/, '');
+        const path = window.location.pathname;
+        if (!repoBase || !path.startsWith(`${repoBase}/`)) return;
+
+        let route = path.slice(repoBase.length) || '/';
+        let appBase = repoBase;
+        const previewMatch = route.match(/^\/pr\d+(?=\/|$)/);
+        if (previewMatch) {
+          appBase += previewMatch[0];
+          route = route.slice(previewMatch[0].length) || '/';
+        }
+
+        try {
+          sessionStorage.setItem(
+            'studio-city-pages-redirect',
+            JSON.stringify({
+              appBase,
+              route,
+              search: window.location.search,
+              hash: window.location.hash,
+            }),
+          );
+        } catch {
+          // If storage is unavailable, still send the user to the app shell.
+        }
+
+        window.location.replace(`${appBase}/`);
+      })();
+    </script>
+  </head>
+  <body></body>
+</html>

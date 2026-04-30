@@ -469,3 +469,13 @@
 - Reworked the lobby UI into a five-row player table with host-only get-link, add-bot, and start controls.
 - Kept the current game-start path restricted to exactly two human players, while preserving bot and 3-5 player lobby data for later implementation.
 - Updated Firestore rules and E2E coverage for the new lobby table and bot-reservation behavior.
+
+### Verbatim Prompt
+
+> Get link gave me https://s2alexan.github.io/studiocity/pr13/room/EIZZ - which seems correct - but when i pasted that into another browser window it gave me a 404. It should immediately add this new player to the lobby
+
+### Setup Notes
+
+- GitHub Pages serves the custom 404 from the published project root, not from nested PR preview directories, so direct links like `/studiocity/pr13/room/EIZZ` need a root fallback that understands PR preview base paths.
+- Added a standalone Pages 404 redirect shim that stores the intended room route, redirects to the correct app shell (`/studiocity/` or `/studiocity/prNN/`), and lets the app restore the original route before SvelteKit boots.
+- Changed the Pages workflow to publish PR previews under `prNN/` and the shared root fallback together, preserving the existing PR link format while making copied room URLs load directly.

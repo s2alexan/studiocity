@@ -59,12 +59,24 @@ jobs:
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
           VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
 
+      - name: Prepare GitHub Pages artifact
+        run: |
+          rm -rf pages-artifact
+          mkdir -p pages-artifact
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            mkdir -p "pages-artifact/${{ steps.base_path.outputs.dir }}"
+            cp -R build/. "pages-artifact/${{ steps.base_path.outputs.dir }}/"
+          else
+            cp -R build/. pages-artifact/
+          fi
+          sed "s|__REPO_BASE__|/${{ github.event.repository.name }}|g" .github/pages-404.html > pages-artifact/404.html
+
       - name: Deploy to gh-pages branch
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./build
-          destination_dir: ${{ steps.base_path.outputs.dir }}
+          publish_dir: ./pages-artifact
+          destination_dir: .
           keep_files: true
 
       - name: Deploy Firebase rules and functions

@@ -7,6 +7,32 @@
     <meta name="description" content="Studio City tabletop card game PWA" />
     <link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
     <title>Studio City</title>
+    <script>
+      (() => {
+        const storageKey = 'studio-city-pages-redirect';
+        try {
+          const rawRedirect = sessionStorage.getItem(storageKey);
+          if (!rawRedirect) return;
+
+          const redirect = JSON.parse(rawRedirect);
+          const appBase = String(redirect.appBase ?? '').replace(/\/$/, '');
+          const currentPath = window.location.pathname.replace(/\/$/, '');
+          if (currentPath !== appBase) return;
+
+          sessionStorage.removeItem(storageKey);
+          const route = String(redirect.route ?? '/').startsWith('/')
+            ? String(redirect.route ?? '/')
+            : `/${redirect.route}`;
+          window.history.replaceState(
+            null,
+            document.title,
+            `${appBase}${route}${redirect.search ?? ''}${redirect.hash ?? ''}`,
+          );
+        } catch {
+          sessionStorage.removeItem(storageKey);
+        }
+      })();
+    </script>
     %sveltekit.head%
   </head>
   <body data-sveltekit-preload-data="hover">
