@@ -1,6 +1,7 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { GameAction, GameCode, PlayerId, StoredGameAction } from './actions';
 import { getBoxOfficeCard, getContractCard, getMovieCard, getReviewCard, BOX_OFFICE_DECK, REVIEW_DECK, CONTRACT_DECK } from './cards';
+import { contractStatus } from './player-summary';
 
 export interface Player {
   id: PlayerId;
@@ -122,51 +123,19 @@ function evaluateScore(projection: GameProjection, playerId: PlayerId): number {
   let score = 0;
   
   const totalBills = playerState.boxOffice.reduce((sum, id) => sum + getBoxOfficeCard(id).bills, 0);
-  const totalStars = playerState.reviews.reduce((sum, id) => sum + getReviewCard(id).stars, 0);
-  const blockbusters = playerState.boxOffice.filter(id => getBoxOfficeCard(id).bills >= 3).length;
-  const loved = playerState.reviews.filter(id => getReviewCard(id).stars >= 3).length;
 
   // Box office cards are worth their bills
   score += totalBills;
 
-  // Contracts
+  // Completed contracts score their value; failed or still-pending contracts score nothing.
   for (const cId of playerState.contracts) {
     const c = getContractCard(cId);
-    let complete = false;
-    if (c.conditionType === 'total_bills' && totalBills >= c.conditionTarget) complete = true;
-    if (c.conditionType === 'total_stars' && totalStars >= c.conditionTarget) complete = true;
-    if (c.conditionType === 'blockbusters' && blockbusters >= c.conditionTarget) complete = true;
-    if (c.conditionType === 'loved' && loved >= c.conditionTarget) complete = true;
-    if (c.conditionType === 'free') complete = evaluateUnreleasedContract(projection, playerId, c.description);
-    
-    if (complete) {
+    if (contractStatus(c, projection, playerId) === 'complete') {
       score += c.value;
     }
   }
 
   return score;
-}
-
-function evaluateUnreleasedContract(projection: GameProjection, playerId: PlayerId, description: string): boolean {
-  const ownMovieId = projection.unreleasedMovies[playerId];
-  const rightMovieId = rightNeighborId(projection, playerId);
-  const rightMovie = rightMovieId ? projection.unreleasedMovies[rightMovieId] : undefined;
-  if (!ownMovieId || !rightMovie) return false;
-
-  const ownMovie = getMovieCard(ownMovieId);
-  const neighborMovie = getMovieCard(rightMovie);
-
-  if (description.includes('box_office_rank_icon')) return ownMovie.boxOfficeRank > neighborMovie.boxOfficeRank;
-  if (description.includes('review_rank_icon')) return ownMovie.reviewRank > neighborMovie.reviewRank;
-  if (description.includes('contract_rank_icon')) return ownMovie.contractRank > neighborMovie.contractRank;
-  return false;
-}
-
-function rightNeighborId(projection: GameProjection, playerId: PlayerId) {
-  const playersBySeat = [...projection.players].sort((a, b) => a.seatIndex - b.seatIndex);
-  const playerIndex = playersBySeat.findIndex((player) => player.id === playerId);
-  if (playerIndex < 0 || playersBySeat.length < 2) return null;
-  return playersBySeat[(playerIndex + 1) % playersBySeat.length].id;
 }
 
 function replay(actions: StoredGameAction[]): GameProjection {
