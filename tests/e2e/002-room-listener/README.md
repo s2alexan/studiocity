@@ -1,23 +1,22 @@
 # Room Listener
 
-The room route listens to Firestore emulator actions and renders derived Redux state.
+The room route listens to Firestore emulator actions, auto-joins linked visitors, and renders derived Redux state.
 
-## Room route is ready
+## Host creates a room
 
-![Room route is ready](./screenshots/000-initial-room.png)
-
-### Verifications
-
-- [x] Room code is visible in the join panel
-
-## Joined player is derived from replayed actions
-
-![Joined player is derived from replayed actions](./screenshots/001-joined-room.png)
+![Host creates a room](./screenshots/000-host-room.png)
 
 ### Verifications
 
-- [x] Lobby shows the player table
-- [x] Joined player appears in the room
+- [x] Host appears in the lobby table
+
+## Room link auto-joins a guest
+
+![Room link auto-joins a guest](./screenshots/001-linked-guest-joined.png)
+
+### Verifications
+
+- [x] Guest appears in the lobby table
 
 ## Host can reserve a future bot seat
 

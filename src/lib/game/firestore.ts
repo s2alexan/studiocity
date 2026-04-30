@@ -82,8 +82,20 @@ export async function joinRoom(
     const data = actionDoc.data() as Partial<GameAction>;
     return data.type === 'PLAYER_JOINED' && data.payload?.playerId === playerId;
   });
+  const roomExists = existing.docs.some((actionDoc) => {
+    const data = actionDoc.data() as Partial<GameAction>;
+    return data.type === 'ROOM_CREATED';
+  });
+
+  if (!roomExists) {
+    throw new Error('Room not found.');
+  }
 
   if (!hasJoined) {
+    const gameStarted = existing.docs.some((actionDoc) => {
+      const data = actionDoc.data() as Partial<GameAction>;
+      return data.type === 'GAME_STARTED';
+    });
     const occupiedSeats = new Set<number>();
     let legacyPlayerSeat = 0;
     for (const actionDoc of existing.docs) {
@@ -100,8 +112,10 @@ export async function joinRoom(
         occupiedSeats.add(data.payload.seatIndex);
       }
     }
-    const seatIndex = Array.from({ length: DEFAULT_LOBBY_CONFIG.maxPlayers }, (_, index) => index)
-      .find((index) => !occupiedSeats.has(index));
+    const seatIndex = gameStarted
+      ? undefined
+      : Array.from({ length: DEFAULT_LOBBY_CONFIG.maxPlayers }, (_, index) => index)
+        .find((index) => !occupiedSeats.has(index));
     const role = seatIndex === undefined ? 'spectator' : 'player';
 
     await addDoc(actionsRef, {

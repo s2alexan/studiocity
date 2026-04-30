@@ -9,6 +9,7 @@
   import { getBoxOfficeCard, getContractCard, getMovieCard, getReviewCard } from '$lib/game/cards';
   import { addBot, chooseContract, joinRoom, listenToActions, listenToPrivateData, openSummary } from '$lib/game/firestore';
   import { callStartGame, callSubmitMovie } from '$lib/game/functions';
+  import { getLocalPlayerName, setLocalPlayerName } from '$lib/game/session';
   import {
     conditionTokens,
     contractStatus,
@@ -70,6 +71,7 @@
     }
 
     const playerId = getLocalPlayerId();
+    name = getLocalPlayerName() ?? 'Player';
     store.dispatch(setLocalPlayerId(playerId));
     
     const { db } = getFirebaseServices();
@@ -98,6 +100,8 @@
         error = `Could not load your hand: ${caught.message}`;
       },
     );
+
+    void join();
 
     onDestroy(() => {
       unsubscribeActions();
@@ -151,9 +155,11 @@
     if (!isGameCode(data.code)) return;
     error = '';
     busy = true;
+    const playerName = name.trim() || 'Player';
     try {
       const { db } = getFirebaseServices();
-      await joinRoom(db, data.code, getLocalPlayerId(), name.trim() || 'Player');
+      setLocalPlayerName(playerName);
+      await joinRoom(db, data.code, getLocalPlayerId(), playerName);
     } catch (caught) {
       error = caught instanceof Error ? caught.message : 'Could not join room.';
     } finally {
@@ -419,10 +425,9 @@
 
   {#if !isJoined}
     <div class="join-panel glass">
-      <h1>Join Studio City</h1>
+      <h1>Joining Studio City</h1>
       <p>Room: <span class="badge">{data.code}</span></p>
-      <input bind:value={name} aria-label="Player name" placeholder="Your Name" />
-      <button class="btn primary" disabled={busy} onclick={join}>Join Game</button>
+      <p>Adding you to the lobby...</p>
     </div>
   {:else if tableProjection.status === 'lobby'}
     <div class="lobby-panel glass">
@@ -1488,17 +1493,6 @@
     margin: 2rem auto 0;
     padding: 1.8rem;
     text-align: center;
-  }
-
-  input {
-    width: 100%;
-    padding: 0.75rem;
-    margin: 1rem 0;
-    border: 1px solid rgba(244, 214, 158, 0.24);
-    border-radius: 8px;
-    background: rgba(12, 12, 12, 0.8);
-    color: white;
-    font-size: 1rem;
   }
 
   .btn {
