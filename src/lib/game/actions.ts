@@ -47,6 +47,25 @@ export type GameAction =
     }
   | {
       id?: string;
+      type: 'PLAYER_RENAMED';
+      at: number;
+      actorId: PlayerId;
+      payload: {
+        playerId: PlayerId;
+        name: string;
+      };
+    }
+  | {
+      id?: string;
+      type: 'PLAYER_KICKED';
+      at: number;
+      actorId: PlayerId;
+      payload: {
+        playerId: PlayerId;
+      };
+    }
+  | {
+      id?: string;
       type: 'SEAT_CLAIMED';
       at: number;
       actorId: PlayerId;

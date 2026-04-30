@@ -29,6 +29,7 @@ export interface GameProjection {
   gameCode: GameCode | null;
   players: Player[];
   spectators: Spectator[];
+  kickedPlayers: Record<PlayerId, boolean>;
   lobbyConfig: LobbyConfig;
   status: GameStatus;
   round: number;
@@ -58,6 +59,7 @@ export const initialProjection: GameProjection = {
   gameCode: null,
   players: [],
   spectators: [],
+  kickedPlayers: {},
   lobbyConfig: {
     minPlayers: 2,
     maxPlayers: 5,
@@ -199,6 +201,28 @@ function replay(actions: StoredGameAction[]): GameProjection {
             projection.playerStates[action.payload.botId] = {
               boxOffice: [], reviews: [], contracts: [], score: 0
             };
+          }
+          break;
+        }
+
+        case 'PLAYER_RENAMED': {
+          const player = projection.players.find(p => p.id === action.payload.playerId);
+          if (player) {
+            player.name = action.payload.name;
+          }
+          const spectator = projection.spectators.find(p => p.id === action.payload.playerId);
+          if (spectator) {
+            spectator.name = action.payload.name;
+          }
+          break;
+        }
+
+        case 'PLAYER_KICKED': {
+          if (projection.status === 'lobby') {
+            projection.players = projection.players.filter(p => p.id !== action.payload.playerId);
+            projection.spectators = projection.spectators.filter(p => p.id !== action.payload.playerId);
+            delete projection.playerStates[action.payload.playerId];
+            projection.kickedPlayers[action.payload.playerId] = true;
           }
           break;
         }
