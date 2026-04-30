@@ -30,11 +30,13 @@ test('room listener replays joined player action', async ({ browser, page }, tes
   );
 
   await page.goto('/');
-  await page.getByLabel('Name').fill('Stefan');
   await page.getByRole('button', { name: 'Create room' }).click();
   await page.waitForURL(/\/room\/[A-Z]{4}$/);
   const gameCode = new URL(page.url()).pathname.split('/').pop();
   expect(gameCode).toMatch(/^[A-Z]{4}$/);
+  await page.getByLabel('Name for Player 1').fill('Stefan');
+  await page.getByLabel('Name for Player 1').press('Enter');
+  await expect(page.getByLabel('Name for Player 1')).toHaveValue('Stefan');
   await normalizeRoomCodeText(page);
 
   await tester.step('host-room', {
@@ -44,7 +46,7 @@ test('room listener replays joined player action', async ({ browser, page }, tes
         spec: 'Host appears in the lobby table',
         check: async () => {
           await expect(page.getByRole('table')).toBeVisible();
-          await expect(page.getByText('Stefan')).toBeVisible();
+          await expect(page.getByLabel('Name for Player 1')).toHaveValue('Stefan');
           await expect(page.getByText('1 of 5 seats filled')).toBeVisible();
         },
       },
@@ -68,23 +70,44 @@ test('room listener replays joined player action', async ({ browser, page }, tes
         spec: 'Guest appears in the lobby table',
         check: async () => {
           await expect(guestPage.getByRole('table')).toBeVisible();
-          await expect(guestPage.getByText('Guest')).toBeVisible();
+          await expect(guestPage.getByLabel('Name for Player 2')).toHaveValue('Guest');
           await expect(page.getByText('2 of 5 seats filled')).toBeVisible();
         },
       },
     ],
   });
 
-  await page.getByRole('button', { name: 'Add bot' }).click();
+  await page.getByRole('button', { name: 'Kick' }).click();
+  await expect(guestPage.getByRole('heading', { name: 'Removed from Room' })).toBeVisible();
+  await expect(page.getByText('1 of 5 seats filled')).toBeVisible();
   await normalizeRoomCodeText(page);
 
-  await tester.step('bot-added', {
-    description: 'Host can reserve a future bot seat',
+  await tester.step('guest-kicked', {
+    description: 'Host removes a human player',
     verifications: [
       {
-        spec: 'Bot occupies the next lobby seat',
+        spec: 'Removed guest is no longer seated and sees the removal notice',
         check: async () => {
-          await expect(page.getByText('Bot 3')).toBeVisible();
+          await expect(page.getByText('Guest')).toHaveCount(0);
+          await expect(guestPage.getByText('You have been removed from this Studio City room by the host.')).toBeVisible();
+        },
+      },
+    ],
+  });
+
+  await page.getByRole('button', { name: 'Add bot' }).click();
+  await page.getByLabel('Name for Player 2').fill('Projectionist');
+  await page.getByLabel('Name for Player 2').press('Enter');
+  await expect(page.getByLabel('Name for Player 2')).toHaveValue('Projectionist');
+  await normalizeRoomCodeText(page);
+
+  await tester.step('bot-added-and-renamed', {
+    description: 'Host can reserve and rename a future bot seat',
+    verifications: [
+      {
+        spec: 'Bot occupies the reusable lobby seat with the edited name',
+        check: async () => {
+          await expect(page.getByLabel('Name for Player 2')).toHaveValue('Projectionist');
           await expect(page.getByText('Bots are lobby-only for now')).toBeVisible();
         },
       },
@@ -92,6 +115,23 @@ test('room listener replays joined player action', async ({ browser, page }, tes
         spec: 'Current implementation does not start with a bot',
         check: async () => {
           await expect(page.getByRole('button', { name: 'Start Game' })).toBeDisabled();
+        },
+      },
+    ],
+  });
+
+  await page.getByRole('button', { name: 'Kick' }).click();
+  await expect(page.getByText('1 of 5 seats filled')).toBeVisible();
+  await normalizeRoomCodeText(page);
+
+  await tester.step('bot-kicked', {
+    description: 'Host removes a bot from its seat',
+    verifications: [
+      {
+        spec: 'Bot seat becomes open again',
+        check: async () => {
+          await expect(page.getByLabel('Name for Player 2')).toHaveCount(0);
+          await expect(page.getByText('Open seat')).toHaveCount(4);
         },
       },
     ],

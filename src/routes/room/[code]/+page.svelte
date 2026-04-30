@@ -7,7 +7,7 @@
   import { isGameCode, type PlayerId } from '$lib/game/actions';
   import { cardBackPath, type CardBackType } from '$lib/game/card-art';
   import { getBoxOfficeCard, getContractCard, getMovieCard, getReviewCard } from '$lib/game/cards';
-  import { addBot, chooseContract, joinRoom, listenToActions, listenToPrivateData, openSummary } from '$lib/game/firestore';
+  import { addBot, chooseContract, joinRoom, kickPlayer, listenToActions, listenToPrivateData, openSummary, renamePlayer } from '$lib/game/firestore';
   import { callStartGame, callSubmitMovie } from '$lib/game/functions';
   import { getLocalPlayerName, setLocalPlayerName } from '$lib/game/session';
   import {
@@ -16,7 +16,7 @@
     summarizePlayerState,
     type ContractStatus,
   } from '$lib/game/player-summary';
-  import { replayActions, setLocalPlayerId, type GameProjection } from '$lib/game/reducer';
+  import { replayActions, setLocalPlayerId, type GameProjection, type Player } from '$lib/game/reducer';
   import { getLocalPlayerId } from '$lib/game/session';
   import { store } from '$lib/game/store';
 
@@ -180,6 +180,39 @@
       await addBot(db, data.code, getLocalPlayerId(), openSeat);
     } catch (caught) {
       error = caught instanceof Error ? caught.message : 'Could not add bot.';
+    }
+  }
+
+  async function handleRename(player: Player, rawName: string) {
+    if (!isGameCode(data.code)) return;
+    const nextName = rawName.trim() || player.name;
+    if (nextName === player.name) return;
+    error = '';
+    try {
+      const { db } = getFirebaseServices();
+      if (player.id === localPlayerId) {
+        setLocalPlayerName(nextName);
+      }
+      await renamePlayer(db, data.code, getLocalPlayerId(), player.id, nextName);
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : 'Could not rename player.';
+    }
+  }
+
+  async function handleKick(player: Player) {
+    if (!isGameCode(data.code) || player.id === localPlayerId) return;
+    error = '';
+    try {
+      const { db } = getFirebaseServices();
+      await kickPlayer(db, data.code, getLocalPlayerId(), player.id);
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : 'Could not remove player.';
+    }
+  }
+
+  function handleNameKeydown(event: KeyboardEvent) {
+    if (event.key === 'Enter') {
+      (event.currentTarget as HTMLInputElement).blur();
     }
   }
 
@@ -365,6 +398,14 @@
     );
   }
 
+  function canEditLobbyName(player: Player) {
+    return player.id === localPlayerId || (isHost && player.kind === 'bot');
+  }
+
+  function canKickLobbyPlayer(player: Player) {
+    return isHost && player.id !== localPlayerId;
+  }
+
   function selectedMovieFor(playerId: PlayerId) {
     if (movieRevealStage === 'revealing' && stagedPlayedMovies[playerId]) return stagedPlayedMovies[playerId];
     if (tableProjection.playedMovies[playerId]) return tableProjection.playedMovies[playerId];
@@ -398,6 +439,7 @@
     tableProjection.players.some((p) => p.id === localPlayerId) ||
       tableProjection.spectators.some((p) => p.id === localPlayerId),
   );
+  const wasRemoved = $derived(Boolean(localPlayerId && tableProjection.kickedPlayers[localPlayerId]));
   const isHost = $derived(tableProjection.players[0]?.id === localPlayerId);
   const canPlayCards = $derived(projection.status === 'playing' && projection.phase === 'selection' && !privateData?.chosenMovie && !busy && movieRevealStage === 'idle');
 </script>
@@ -423,7 +465,12 @@
     <div class="error-banner" role="alert">{error}</div>
   {/if}
 
-  {#if !isJoined}
+  {#if wasRemoved}
+    <div class="join-panel glass">
+      <h1>Removed from Room</h1>
+      <p>You have been removed from this Studio City room by the host.</p>
+    </div>
+  {:else if !isJoined}
     <div class="join-panel glass">
       <h1>Joining Studio City</h1>
       <p>Room: <span class="badge">{data.code}</span></p>
@@ -439,6 +486,7 @@
               <th scope="col">Seat</th>
               <th scope="col">Player</th>
               <th scope="col">Type</th>
+              <th scope="col">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -448,7 +496,18 @@
                 <th scope="row">Player {seatIndex + 1}</th>
                 <td>
                   {#if seatPlayer}
-                    <strong>{seatPlayer.name}</strong>
+                    {#if canEditLobbyName(seatPlayer)}
+                      <input
+                        class="lobby-name-input"
+                        value={seatPlayer.name}
+                        aria-label={`Name for Player ${seatIndex + 1}`}
+                        maxlength="24"
+                        onchange={(event) => handleRename(seatPlayer, event.currentTarget.value)}
+                        onkeydown={handleNameKeydown}
+                      />
+                    {:else}
+                      <strong>{seatPlayer.name}</strong>
+                    {/if}
                     {#if seatPlayer.id === localPlayerId}
                       <span class="seat-note">You</span>
                     {/if}
@@ -461,6 +520,13 @@
                     Bot
                   {:else if seatPlayer}
                     Human
+                  {:else}
+                    -
+                  {/if}
+                </td>
+                <td>
+                  {#if seatPlayer && canKickLobbyPlayer(seatPlayer)}
+                    <button class="seat-action" type="button" onclick={() => handleKick(seatPlayer)}>Kick</button>
                   {:else}
                     -
                   {/if}
@@ -1579,6 +1645,35 @@
     font-size: 0.76rem;
     font-weight: 800;
     text-transform: uppercase;
+  }
+
+  .lobby-name-input {
+    width: min(100%, 16rem);
+    padding: 0.42rem 0.52rem;
+    border: 1px solid rgba(244, 214, 158, 0.24);
+    border-radius: 6px;
+    background: rgba(9, 8, 8, 0.68);
+    color: #fff7e7;
+    font: inherit;
+    font-weight: 800;
+  }
+
+  .lobby-name-input:focus {
+    border-color: rgba(246, 220, 147, 0.72);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(246, 220, 147, 0.14);
+  }
+
+  .seat-action {
+    padding: 0.4rem 0.58rem;
+    border: 1px solid rgba(255, 121, 108, 0.34);
+    border-radius: 6px;
+    background: rgba(112, 24, 20, 0.72);
+    color: #ffe4dc;
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 900;
+    cursor: pointer;
   }
 
   .empty-copy,

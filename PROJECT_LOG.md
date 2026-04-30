@@ -480,3 +480,19 @@
 - Added a standalone Pages 404 redirect shim that stores the intended room route, redirects to the correct app shell (`/studiocity/` or `/studiocity/prNN/`), and lets the app restore the original route before SvelteKit boots.
 - Changed the Pages workflow to publish PR previews under `prNN/` and the shared root fallback together, preserving the existing PR link format while making copied room URLs load directly.
 - Updated room links to auto-join the visitor with their stored player name, or `Player` if they have no saved name yet, so there is no extra join-by-code step after opening an invite URL.
+
+### Verbatim Prompt
+
+> This seems to work. 2 features needed:
+> - The host needs a way to kick players and bots out of the spot. If kicked, a players needs to be told they have been removed from the room.
+> - players who join need a way to change their name. In fact, for simplicity, you can just remove the name field from the home page, and then all players (hosts, and those who join), can just edit their own name in the text field in the lobby table directly. The host should be able to edit bot names too.
+>
+> This might need some new firebase code, remember you can only push that from my mac.
+
+### Setup Notes
+
+- Removed the home-page name field; room creation now starts the host with the default lobby name `Player`.
+- Added replayable `PLAYER_RENAMED` and `PLAYER_KICKED` lobby actions. Players can rename themselves in the lobby table, and the host can rename bots or kick occupied seats.
+- Kicked players are removed from the lobby projection and see a dedicated removed-from-room notice instead of the normal auto-join panel.
+- Updated join-seat derivation so kicked seats become reusable for future humans or bots.
+- Updated Firestore rules to allow the new lobby input actions, and expanded E2E coverage for rename, human kick, bot rename, and bot kick.

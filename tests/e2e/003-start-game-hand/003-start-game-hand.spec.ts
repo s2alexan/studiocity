@@ -221,8 +221,8 @@ test('started game shows the local player hand', async ({ browser, page }, testI
   );
 
   await page.goto('/');
-  await page.getByLabel('Name').fill('Host');
   await page.getByRole('button', { name: 'Create room' }).click();
+  await page.waitForURL(/\/room\/[A-Z]{4}$/);
   await normalizeRoomCodeText(page);
 
   await tester.step('host-lobby', {

@@ -1,13 +1,11 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { base } from '$app/paths';
-  import { onMount } from 'svelte';
   import { getFirebaseServices } from '$lib/firebase/config';
   import { createGameCode } from '$lib/game/actions';
   import { createRoom } from '$lib/game/firestore';
-  import { getLocalPlayerId, getLocalPlayerName, setLocalPlayerName } from '$lib/game/session';
+  import { getLocalPlayerId } from '$lib/game/session';
 
-  let name = $state('Player');
   let error = $state('');
   let busy = $state(false);
 
@@ -15,19 +13,13 @@
     return `${base}${path}`;
   }
 
-  onMount(() => {
-    name = getLocalPlayerName() ?? 'Player';
-  });
-
   async function createNewRoom() {
     error = '';
     busy = true;
     const gameCode = createGameCode();
-    const playerName = name.trim() || 'Player';
     try {
       const { db } = getFirebaseServices();
-      setLocalPlayerName(playerName);
-      await createRoom(db, gameCode, getLocalPlayerId(), playerName);
+      await createRoom(db, gameCode, getLocalPlayerId(), 'Player');
       await goto(`${base}/room/${gameCode}`);
     } catch (caught) {
       error = caught instanceof Error ? caught.message : 'Could not create room.';
@@ -43,11 +35,6 @@
   style={`--cinema-bg: url('${assetPath('/ui/cinema-background.png')}')`}
 >
   <section class="panel">
-    <label>
-      Name
-      <input bind:value={name} autocomplete="name" />
-    </label>
-
     <div class="actions">
       <button type="button" disabled={busy} onclick={createNewRoom}>Create room</button>
     </div>
@@ -110,31 +97,6 @@
     box-shadow: 0 1.15rem 2.25rem rgba(0, 0, 0, 0.28);
     text-align: center;
     backdrop-filter: blur(10px);
-  }
-
-  label {
-    display: grid;
-    gap: 0.35rem;
-    color: rgba(255, 247, 231, 0.82);
-    font-size: 0.86rem;
-    font-weight: 800;
-    text-align: left;
-    text-transform: uppercase;
-  }
-
-  input {
-    width: 100%;
-    padding: 0.72rem 0.8rem;
-    border: 1px solid rgba(244, 214, 158, 0.24);
-    border-radius: 8px;
-    background: rgba(12, 12, 12, 0.8);
-    color: white;
-    font: inherit;
-    font-size: 1rem;
-  }
-
-  input::placeholder {
-    color: rgba(255, 247, 231, 0.5);
   }
 
   .actions {

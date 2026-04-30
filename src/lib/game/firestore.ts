@@ -96,22 +96,26 @@ export async function joinRoom(
       const data = actionDoc.data() as Partial<GameAction>;
       return data.type === 'GAME_STARTED';
     });
-    const occupiedSeats = new Set<number>();
+    const playerSeats = new Map<PlayerId, number>();
     let legacyPlayerSeat = 0;
     for (const actionDoc of existing.docs) {
       const data = actionDoc.data() as Partial<GameAction>;
       if (data.type === 'PLAYER_JOINED' && data.payload?.role !== 'spectator') {
         if (typeof data.payload?.seatIndex === 'number') {
-          occupiedSeats.add(data.payload.seatIndex);
+          playerSeats.set(data.payload.playerId, data.payload.seatIndex);
         } else {
-          occupiedSeats.add(legacyPlayerSeat);
+          playerSeats.set(data.payload.playerId, legacyPlayerSeat);
         }
         legacyPlayerSeat++;
       }
       if (data.type === 'BOT_ADDED' && typeof data.payload?.seatIndex === 'number') {
-        occupiedSeats.add(data.payload.seatIndex);
+        playerSeats.set(data.payload.botId, data.payload.seatIndex);
+      }
+      if (data.type === 'PLAYER_KICKED') {
+        playerSeats.delete(data.payload.playerId);
       }
     }
+    const occupiedSeats = new Set(playerSeats.values());
     const seatIndex = gameStarted
       ? undefined
       : Array.from({ length: DEFAULT_LOBBY_CONFIG.maxPlayers }, (_, index) => index)
@@ -176,6 +180,37 @@ export async function addBot(db: Firestore, gameCode: GameCode, actorId: PlayerI
       seatIndex,
       kind: 'bot',
     },
+  } satisfies GameAction);
+}
+
+export async function renamePlayer(
+  db: Firestore,
+  gameCode: GameCode,
+  actorId: PlayerId,
+  playerId: PlayerId,
+  name: string,
+) {
+  const actionsRef = collection(doc(db, 'game', gameCode), 'actions');
+  await addDoc(actionsRef, {
+    type: 'PLAYER_RENAMED',
+    at: Date.now(),
+    actorId,
+    payload: { playerId, name },
+  } satisfies GameAction);
+}
+
+export async function kickPlayer(
+  db: Firestore,
+  gameCode: GameCode,
+  actorId: PlayerId,
+  playerId: PlayerId,
+) {
+  const actionsRef = collection(doc(db, 'game', gameCode), 'actions');
+  await addDoc(actionsRef, {
+    type: 'PLAYER_KICKED',
+    at: Date.now(),
+    actorId,
+    payload: { playerId },
   } satisfies GameAction);
 }
 

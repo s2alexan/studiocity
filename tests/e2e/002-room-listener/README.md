@@ -18,12 +18,28 @@ The room route listens to Firestore emulator actions, auto-joins linked visitors
 
 - [x] Guest appears in the lobby table
 
-## Host can reserve a future bot seat
+## Host removes a human player
 
-![Host can reserve a future bot seat](./screenshots/002-bot-added.png)
+![Host removes a human player](./screenshots/002-guest-kicked.png)
 
 ### Verifications
 
-- [x] Bot occupies the next lobby seat
+- [x] Removed guest is no longer seated and sees the removal notice
+
+## Host can reserve and rename a future bot seat
+
+![Host can reserve and rename a future bot seat](./screenshots/003-bot-added-and-renamed.png)
+
+### Verifications
+
+- [x] Bot occupies the reusable lobby seat with the edited name
 - [x] Current implementation does not start with a bot
+
+## Host removes a bot from its seat
+
+![Host removes a bot from its seat](./screenshots/004-bot-kicked.png)
+
+### Verifications
+
+- [x] Bot seat becomes open again
 
