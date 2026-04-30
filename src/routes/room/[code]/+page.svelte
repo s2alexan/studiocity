@@ -20,6 +20,7 @@
   import { store } from '$lib/game/store';
 
   const { data } = $props<{ data: { code: string } }>();
+  const AWARD_STEP_MS = GAME_ANIMATION_SPEED_MS * 1.8;
 
   let name = $state('Player');
   let status = $state('Connecting');
@@ -32,6 +33,7 @@
   let animationsDisabled = $state(false);
   let awardStep = $state(999);
   let contractAwardKey = $state('');
+  let pendingSelectedMovieId = $state<string | null>(null);
 
   const unsubscribeStore = store.subscribe(() => {
     projection = store.getState().game.projection;
@@ -102,12 +104,18 @@
     const timers = sequence.map((_, index) =>
       window.setTimeout(() => {
         awardStep = index + 1;
-      }, GAME_ANIMATION_SPEED_MS * (index + 1)),
+      }, AWARD_STEP_MS * (index + 1)),
     );
 
     return () => {
       timers.forEach((timer) => window.clearTimeout(timer));
     };
+  });
+
+  $effect(() => {
+    if (localPlayerId && projection.playedMovies[localPlayerId]) {
+      pendingSelectedMovieId = null;
+    }
   });
 
   async function join() {
@@ -150,11 +158,14 @@
 
   async function handlePlayMovie(movieId: string) {
     if (!isGameCode(data.code) || busy) return;
+    pendingSelectedMovieId = movieId;
+    error = '';
     busy = true;
     try {
       const { functions } = getFirebaseServices();
       await callSubmitMovie(functions, data.code, getLocalPlayerId(), projection.round, movieId);
     } catch (caught) {
+      pendingSelectedMovieId = null;
       error = caught instanceof Error ? caught.message : 'Could not submit movie.';
     } finally {
       busy = false;
@@ -250,22 +261,43 @@
 
   function buildAwardSequence() {
     const boxOfficeAwards = awardOrder('boxOfficeRank')
-      .map((player) => ({
+      .map((player, index) => ({
         type: 'boxOffice' as const,
         playerId: player.id,
         cardId: projection.playerStates[player.id]?.boxOffice.at(-1),
+        fromIndex: projection.players.length - 1 - index,
+        toIndex: player.seatIndex,
       }))
-      .filter((award): award is { type: 'boxOffice'; playerId: PlayerId; cardId: string } => Boolean(award.cardId));
+      .filter((award): award is { type: 'boxOffice'; playerId: PlayerId; cardId: string; fromIndex: number; toIndex: number } => Boolean(award.cardId));
 
     const reviewAwards = awardOrder('reviewRank')
-      .map((player) => ({
+      .map((player, index) => ({
         type: 'review' as const,
         playerId: player.id,
         cardId: projection.playerStates[player.id]?.reviews.at(-1),
+        fromIndex: projection.players.length - 1 - index,
+        toIndex: player.seatIndex,
       }))
-      .filter((award): award is { type: 'review'; playerId: PlayerId; cardId: string } => Boolean(award.cardId));
+      .filter((award): award is { type: 'review'; playerId: PlayerId; cardId: string; fromIndex: number; toIndex: number } => Boolean(award.cardId));
 
     return [...boxOfficeAwards, ...reviewAwards];
+  }
+
+  function visibleAwardMarketCards(type: 'boxOffice' | 'review') {
+    const sequence = buildAwardSequence();
+    if (projection.lastActionType !== 'MOVIES_REVEALED' || awardStep >= sequence.length) {
+      return type === 'boxOffice' ? projection.market.boxOffice : projection.market.reviews;
+    }
+
+    return sequence
+      .map((award, index) => ({ ...award, index }))
+      .filter((award) => award.type === type && indexNotYetAbsorbed(award.index))
+      .sort((a, b) => a.fromIndex - b.fromIndex)
+      .map((award) => award.cardId);
+  }
+
+  function indexNotYetAbsorbed(index: number) {
+    return animationsDisabled || index >= awardStep;
   }
 
   function latestContractAward(playerId: PlayerId, contractId: string) {
@@ -295,14 +327,43 @@
     return Math.max(0, ...projection.players.map((player) => projection.playerStates[player.id]?.score ?? 0));
   }
 
+  function selectedMovieFor(playerId: PlayerId) {
+    if (projection.playedMovies[playerId]) return projection.playedMovies[playerId];
+    if (playerId === localPlayerId) return privateData?.chosenMovie ?? pendingSelectedMovieId;
+    return null;
+  }
+
+  function playerHasSelectedMovie(playerId: PlayerId) {
+    return Boolean(
+      projection.playedMovies[playerId] ||
+      projection.selectedMoviePlayers[playerId] ||
+      (playerId === localPlayerId && (privateData?.chosenMovie || pendingSelectedMovieId)),
+    );
+  }
+
+  function awardCard(award: ReturnType<typeof buildAwardSequence>[number]) {
+    return award.type === 'boxOffice' ? getBoxOfficeCard(award.cardId) : getReviewCard(award.cardId);
+  }
+
+  function awardStyle(award: ReturnType<typeof buildAwardSequence>[number]) {
+    const row = award.type === 'boxOffice' ? 0 : 1;
+    return [
+      `--award-from-index: ${award.fromIndex}`,
+      `--award-to-index: ${award.toIndex}`,
+      `--award-row: ${row}`,
+    ].join('; ');
+  }
+
   const currentAward = $derived(buildAwardSequence()[awardStep] ?? null);
+  const boxOfficeMarketCards = $derived(visibleAwardMarketCards('boxOffice'));
+  const reviewMarketCards = $derived(visibleAwardMarketCards('review'));
   const showPlayedMovies = $derived(
-    Boolean(privateData?.chosenMovie) ||
+    projection.players.some((player) => playerHasSelectedMovie(player.id)) ||
       Object.keys(projection.playedMovies).length > 0 ||
       projection.phase === 'contract_auction' ||
       projection.status === 'final_round_complete',
   );
-  const showHand = $derived(projection.status === 'playing' && projection.phase === 'selection' && !privateData?.chosenMovie);
+  const showHand = $derived(projection.status === 'playing' && projection.phase === 'selection' && !privateData?.chosenMovie && !pendingSelectedMovieId);
   const isJoined = $derived(projection.players.some((p) => p.id === localPlayerId));
   const isHost = $derived(projection.players[0]?.id === localPlayerId);
   const canPlayCards = $derived(projection.status === 'playing' && projection.phase === 'selection' && !privateData?.chosenMovie && !busy);
@@ -443,12 +504,12 @@
             <img class="deck-card" src={deckBackSrc('boxOffice')} alt={deckBackAlt('boxOffice')} />
           </div>
           <div class="market-cards">
-            {#each projection.market.boxOffice as cId}
+            {#each boxOfficeMarketCards as cId}
               {@const c = getBoxOfficeCard(cId)}
               <div
                 class="card box-office dealt-card"
                 class:award-focus={currentAward?.type === 'boxOffice' && currentAward.cardId === cId}
-                style={`--deal-index: ${projection.market.boxOffice.indexOf(cId)}`}
+                style={`--deal-index: ${boxOfficeMarketCards.indexOf(cId)}`}
                 aria-label={`${c.bills} bill box office card`}
               >
                 <CardImage card={c} />
@@ -462,12 +523,12 @@
             <img class="deck-card" src={deckBackSrc('review')} alt={deckBackAlt('review')} />
           </div>
           <div class="market-cards">
-            {#each projection.market.reviews as cId}
+            {#each reviewMarketCards as cId}
               {@const c = getReviewCard(cId)}
               <div
                 class="card review dealt-card"
                 class:award-focus={currentAward?.type === 'review' && currentAward.cardId === cId}
-                style={`--deal-index: ${projection.market.reviews.indexOf(cId)}`}
+                style={`--deal-index: ${reviewMarketCards.indexOf(cId)}`}
                 aria-label={`${c.stars} star review card`}
               >
                 <CardImage card={c} />
@@ -502,6 +563,14 @@
           </div>
         </div>
       </section>
+
+      {#if currentAward}
+        <div class="award-animation-layer" aria-hidden="true">
+          <div class="card {currentAward.type === 'boxOffice' ? 'box-office' : 'review'} flying-award" style={awardStyle(currentAward)}>
+            <CardImage card={awardCard(currentAward)} />
+          </div>
+        </div>
+      {/if}
 
       <section class="player-boards" aria-label="Player summaries">
         {#each projection.players as player}
@@ -577,15 +646,14 @@
         <section class="played-movies" aria-label="Played movie cards">
           {#each projection.players as player}
             {@const revealedMovieId = projection.playedMovies[player.id]}
-            {@const localChosen = player.id === localPlayerId ? privateData?.chosenMovie : null}
-            {@const movieId = revealedMovieId ?? localChosen}
+            {@const selectedMovieId = selectedMovieFor(player.id)}
             <div
               class="played-movie-slot"
               class:active-player={currentAward?.playerId === player.id || projection.contractPickOrder[0] === player.id}
             >
-              {#if movieId}
-                {@const movie = getMovieCard(movieId)}
-                <div class="card movie played-movie-card" class:face-down={!revealedMovieId && player.id !== localPlayerId}>
+              {#if revealedMovieId}
+                {@const movie = getMovieCard(revealedMovieId)}
+                <div class="card movie played-movie-card revealed">
                   <div class="flip-card">
                     <div class="flip-face flip-back">
                       <CardImage card={movie} faceUp={false} />
@@ -595,8 +663,8 @@
                     </div>
                   </div>
                 </div>
-              {:else}
-                <div class="card movie played-movie-card face-down placeholder">
+              {:else if selectedMovieId || playerHasSelectedMovie(player.id)}
+                <div class="card movie played-movie-card face-down selected-back">
                   <img class="card-art portrait" src={deckBackSrc('movie')} alt="Unrevealed movie card" />
                 </div>
               {/if}
@@ -764,6 +832,7 @@
   }
 
   .playing-state {
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 0.52rem;
@@ -817,6 +886,7 @@
     width: var(--market-card-width);
     aspect-ratio: 7 / 5;
     transform-style: preserve-3d;
+    filter: drop-shadow(0 0.65rem 0.75rem rgba(0, 0, 0, 0.36));
   }
 
   .deck-stack::before,
@@ -826,25 +896,27 @@
     content: '';
     border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.16);
-    background: rgba(43, 38, 32, 0.9);
+    background: rgba(28, 25, 22, 0.95);
     box-shadow:
-      0.12rem 0.14rem 0 rgba(244, 214, 158, 0.14),
-      0.24rem 0.28rem 0 rgba(13, 12, 11, 0.88),
-      0.38rem 0.42rem 0 rgba(244, 214, 158, 0.11),
+      0.12rem 0.12rem 0 rgba(244, 214, 158, 0.2),
+      0.22rem 0.22rem 0 rgba(20, 18, 16, 0.95),
+      0.34rem 0.34rem 0 rgba(244, 214, 158, 0.16),
+      0.48rem 0.48rem 0 rgba(18, 16, 14, 0.95),
+      0.62rem 0.62rem 0 rgba(244, 214, 158, 0.12),
       0 0.65rem 1rem rgba(0, 0, 0, 0.28);
   }
 
   .deck-stack::before {
-    transform: translate(0.28rem, -0.2rem);
+    transform: translate(0.42rem, 0.24rem);
   }
 
   .deck-stack::after {
-    transform: translate(0.14rem, -0.1rem);
+    transform: translate(0.22rem, 0.12rem);
   }
 
   .deck-card {
     position: relative;
-    z-index: 1;
+    z-index: 3;
     display: block;
     width: 100%;
     height: 100%;
@@ -911,6 +983,7 @@
   .dealt-card {
     animation: deal-from-deck calc(var(--animation-speed) * 0.82) cubic-bezier(0.2, 0.78, 0.22, 1) backwards;
     animation-delay: calc(var(--deal-index, 0) * var(--animation-speed) * 0.16);
+    transform-origin: center;
   }
 
   .award-focus,
@@ -918,7 +991,7 @@
     z-index: 2;
     outline: 3px solid rgba(246, 212, 127, 0.9);
     outline-offset: 4px;
-    animation: deliberate-focus calc(var(--animation-speed) * 1.1) ease-in-out infinite;
+    animation: selected-glow calc(var(--animation-speed) * 1.4) ease-in-out infinite;
   }
 
   @keyframes pulse {
@@ -930,30 +1003,98 @@
   @keyframes deal-from-deck {
     0% {
       opacity: 0;
-      transform: translateX(calc(-1 * (var(--market-card-width) + 0.6rem))) translateY(-0.18rem) scale(0.92);
+      transform:
+        translateX(calc(-1 * ((var(--deal-index, 0) + 1) * (var(--market-card-width) + 0.5rem) + 0.58rem)))
+        translateY(-0.08rem)
+        rotateY(180deg)
+        scale(0.98);
       filter: brightness(0.86);
     }
     55% {
       opacity: 1;
-      transform: translateX(0.2rem) translateY(-0.06rem) scale(1.02);
+      transform: translateX(0.08rem) translateY(-0.04rem) rotateY(18deg) scale(1.015);
     }
     100% {
-      opacity: 1;
-      transform: translateX(0) translateY(0) scale(1);
+      transform: translateX(0) translateY(0) rotateY(0deg) scale(1);
       filter: brightness(1);
     }
   }
 
-  @keyframes deliberate-focus {
+  @keyframes selected-glow {
     0%, 100% {
-      transform: translateY(0) scale(1);
       filter: brightness(1);
-      box-shadow: 0 0 0 0 rgba(246, 212, 127, 0.24);
+      box-shadow:
+        0 0 0 0 rgba(246, 212, 127, 0.3),
+        0 0 0.4rem rgba(246, 212, 127, 0.34);
     }
     50% {
-      transform: translateY(-0.26rem) scale(1.035);
       filter: brightness(1.12);
-      box-shadow: 0 0 0 0.55rem rgba(246, 212, 127, 0);
+      box-shadow:
+        0 0 0 0.48rem rgba(246, 212, 127, 0),
+        0 0 0.9rem rgba(246, 212, 127, 0.74);
+    }
+  }
+
+  .award-animation-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    pointer-events: none;
+  }
+
+  .flying-award {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: var(--market-card-width);
+    aspect-ratio: 7 / 5;
+    transform:
+      translate(
+        calc(var(--market-card-width) + 0.58rem + (var(--award-from-index) * (var(--market-card-width) + 0.5rem))),
+        calc(0.5rem + (var(--award-row) * (var(--market-card-width) * 5 / 7 + 0.84rem)))
+      );
+    animation: fly-award-to-player calc(var(--animation-speed) * 1.65) cubic-bezier(0.25, 0.82, 0.25, 1) both;
+  }
+
+  @keyframes fly-award-to-player {
+    0% {
+      opacity: 1;
+      transform:
+        translate(
+          calc(var(--market-card-width) + 0.58rem + (var(--award-from-index) * (var(--market-card-width) + 0.5rem))),
+          calc(0.5rem + (var(--award-row) * (var(--market-card-width) * 5 / 7 + 0.84rem)))
+        )
+        scale(1);
+      filter: brightness(1.15);
+    }
+    18% {
+      transform:
+        translate(
+          calc(var(--market-card-width) + 0.58rem + (var(--award-from-index) * (var(--market-card-width) + 0.5rem))),
+          calc(0.5rem + (var(--award-row) * (var(--market-card-width) * 5 / 7 + 0.84rem)))
+        )
+        translateY(-0.35rem)
+        scale(1.05);
+    }
+    82% {
+      opacity: 1;
+      transform:
+        translate(
+          calc((var(--award-to-index) * ((var(--table-width) - 2.32rem) / 5 + 0.58rem)) + (((var(--table-width) - 2.32rem) / 5 - var(--market-card-width)) / 2)),
+          calc((var(--market-card-width) * 15 / 7) + 2.9rem)
+        )
+        scale(0.72);
+      filter: brightness(1.25);
+    }
+    100% {
+      opacity: 0;
+      transform:
+        translate(
+          calc((var(--award-to-index) * ((var(--table-width) - 2.32rem) / 5 + 0.58rem)) + (((var(--table-width) - 2.32rem) / 5 - var(--market-card-width)) / 2)),
+          calc((var(--market-card-width) * 15 / 7) + 2.9rem)
+        )
+        scale(0.42);
+      filter: brightness(1.45);
     }
   }
 
@@ -1202,7 +1343,7 @@
     align-items: flex-start;
     min-height: calc(var(--movie-card-width) * 1.42);
     padding-bottom: 0.1rem;
-    overflow-x: auto;
+    overflow: visible;
   }
 
   .played-movie-slot {
@@ -1223,12 +1364,10 @@
     width: 100%;
     height: 100%;
     transform-style: preserve-3d;
-    animation: reveal-movie calc(var(--animation-speed) * 1.15) ease-in-out both;
   }
 
-  .face-down .flip-card {
-    animation: none;
-    transform: rotateY(180deg);
+  .revealed .flip-card {
+    animation: reveal-movie calc(var(--animation-speed) * 1.15) ease-in-out both;
   }
 
   .flip-face {
@@ -1241,8 +1380,8 @@
     transform: rotateY(180deg);
   }
 
-  .placeholder {
-    opacity: 0.72;
+  .selected-back {
+    opacity: 0.95;
   }
 
   @keyframes played-card-arrives {
