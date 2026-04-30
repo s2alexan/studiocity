@@ -7,7 +7,7 @@
   import { isGameCode, type PlayerId } from '$lib/game/actions';
   import { cardBackPath, type CardBackType } from '$lib/game/card-art';
   import { getBoxOfficeCard, getContractCard, getMovieCard, getReviewCard } from '$lib/game/cards';
-  import { claimSeat, chooseContract, joinRoom, listenToActions, listenToPrivateData, openSummary } from '$lib/game/firestore';
+  import { addBot, chooseContract, joinRoom, listenToActions, listenToPrivateData, openSummary } from '$lib/game/firestore';
   import { callStartGame, callSubmitMovie } from '$lib/game/functions';
   import {
     conditionTokens,
@@ -35,6 +35,7 @@
   let animationsDisabled = $state(false);
   let contractAwardKey = $state('');
   let pendingSelectedMovieId = $state<string | null>(null);
+  let lobbyMessage = $state('');
   let stagedTableProjection = $state<GameProjection | null>(null);
   let stagedPlayedMovies = $state<Record<PlayerId, string>>({});
   let movieRevealStage = $state<'idle' | 'settling' | 'revealing'>('idle');
@@ -160,27 +161,48 @@
     }
   }
 
-  async function handleClaimSeat() {
+  async function handleAddBot() {
     if (!isGameCode(data.code)) return;
+    const openSeat = nextOpenSeatIndex();
+    if (openSeat === null) {
+      lobbyMessage = 'All five player seats are full.';
+      return;
+    }
+    error = '';
     try {
       const { db } = getFirebaseServices();
-      await claimSeat(db, data.code, getLocalPlayerId(), projection.players.length);
+      await addBot(db, data.code, getLocalPlayerId(), openSeat);
     } catch (caught) {
-      error = caught instanceof Error ? caught.message : 'Could not claim seat.';
+      error = caught instanceof Error ? caught.message : 'Could not add bot.';
     }
   }
 
   async function handleStartGame() {
     if (!isGameCode(data.code)) return;
+    const playerIds = startableHumanPlayerIds();
+    if (!canStartCurrentImplementation()) {
+      error = 'Studio City currently starts only with exactly two human players.';
+      return;
+    }
     busy = true;
     try {
       const { functions } = getFirebaseServices();
-      const playerIds = projection.players.map((p) => p.id);
       await callStartGame(functions, data.code, getLocalPlayerId(), playerIds);
     } catch (caught) {
       error = caught instanceof Error ? caught.message : 'Could not start game.';
     } finally {
       busy = false;
+    }
+  }
+
+  async function handleGetLink() {
+    lobbyMessage = '';
+    const url = typeof window === 'undefined' ? `${base}/room/${data.code}` : window.location.href;
+    try {
+      await navigator.clipboard.writeText(url);
+      lobbyMessage = 'Join link copied.';
+    } catch {
+      lobbyMessage = url;
     }
   }
 
@@ -306,6 +328,37 @@
     return Math.max(0, ...tableProjection.players.map((player) => tableProjection.playerStates[player.id]?.score ?? 0));
   }
 
+  function sortedLobbyPlayers() {
+    return [...tableProjection.players].sort((a, b) => a.seatIndex - b.seatIndex);
+  }
+
+  function lobbyPlayerAt(seatIndex: number) {
+    return sortedLobbyPlayers().find((player) => player.seatIndex === seatIndex);
+  }
+
+  function nextOpenSeatIndex() {
+    const occupied = new Set(tableProjection.players.map((player) => player.seatIndex));
+    const openSeat = Array.from({ length: tableProjection.lobbyConfig.maxPlayers }, (_, index) => index)
+      .find((index) => !occupied.has(index));
+    return openSeat ?? null;
+  }
+
+  function startableHumanPlayerIds() {
+    return sortedLobbyPlayers()
+      .filter((player) => player.kind === 'human')
+      .map((player) => player.id)
+      .slice(0, tableProjection.lobbyConfig.supportedStartHumanPlayers);
+  }
+
+  function canStartCurrentImplementation() {
+    const occupiedPlayers = sortedLobbyPlayers();
+    const humanPlayers = occupiedPlayers.filter((player) => player.kind === 'human');
+    return (
+      occupiedPlayers.length === tableProjection.lobbyConfig.supportedStartHumanPlayers &&
+      humanPlayers.length === tableProjection.lobbyConfig.supportedStartHumanPlayers
+    );
+  }
+
   function selectedMovieFor(playerId: PlayerId) {
     if (movieRevealStage === 'revealing' && stagedPlayedMovies[playerId]) return stagedPlayedMovies[playerId];
     if (tableProjection.playedMovies[playerId]) return tableProjection.playedMovies[playerId];
@@ -335,7 +388,10 @@
       tableProjection.status === 'final_round_complete',
   );
   const showHand = $derived(tableProjection.status === 'playing' && tableProjection.phase === 'selection' && !privateData?.chosenMovie && !pendingSelectedMovieId && movieRevealStage === 'idle');
-  const isJoined = $derived(tableProjection.players.some((p) => p.id === localPlayerId));
+  const isJoined = $derived(
+    tableProjection.players.some((p) => p.id === localPlayerId) ||
+      tableProjection.spectators.some((p) => p.id === localPlayerId),
+  );
   const isHost = $derived(tableProjection.players[0]?.id === localPlayerId);
   const canPlayCards = $derived(projection.status === 'playing' && projection.phase === 'selection' && !privateData?.chosenMovie && !busy && movieRevealStage === 'idle');
 </script>
@@ -371,20 +427,78 @@
   {:else if tableProjection.status === 'lobby'}
     <div class="lobby-panel glass">
       <h1>Lobby: {data.code}</h1>
-      <div class="players-list">
-        <h2>Players ({tableProjection.players.length})</h2>
-        <ul>
-          {#each tableProjection.players as player}
-            <li>{player.name} {player.id === localPlayerId ? '(You)' : ''}</li>
+      <div class="lobby-table-wrap">
+        <table class="lobby-table">
+          <thead>
+            <tr>
+              <th scope="col">Seat</th>
+              <th scope="col">Player</th>
+              <th scope="col">Type</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#each Array(tableProjection.lobbyConfig.maxPlayers) as _, seatIndex}
+              {@const seatPlayer = lobbyPlayerAt(seatIndex)}
+              <tr class:empty-seat={!seatPlayer}>
+                <th scope="row">Player {seatIndex + 1}</th>
+                <td>
+                  {#if seatPlayer}
+                    <strong>{seatPlayer.name}</strong>
+                    {#if seatPlayer.id === localPlayerId}
+                      <span class="seat-note">You</span>
+                    {/if}
+                  {:else}
+                    <span class="empty-copy">Open seat</span>
+                  {/if}
+                </td>
+                <td>
+                  {#if seatPlayer?.kind === 'bot'}
+                    Bot
+                  {:else if seatPlayer}
+                    Human
+                  {:else}
+                    -
+                  {/if}
+                </td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
+
+      {#if tableProjection.spectators.length}
+        <p class="spectator-list">
+          Spectators:
+          {#each tableProjection.spectators as spectator, index}
+            {spectator.name}{index < tableProjection.spectators.length - 1 ? ', ' : ''}
           {/each}
-        </ul>
-      </div>
-      <div class="lobby-actions">
-        {#if isHost && tableProjection.players.length >= 2}
-          <button class="btn success" disabled={busy} onclick={handleStartGame}>Start Game</button>
+        </p>
+      {/if}
+
+      <div class="lobby-meta">
+        <span>{tableProjection.players.length} of {tableProjection.lobbyConfig.maxPlayers} seats filled</span>
+        {#if tableProjection.players.some((player) => player.kind === 'bot')}
+          <span>Bots are lobby-only for now</span>
         {/if}
-        <button class="btn secondary" onclick={handleClaimSeat}>Claim Seat</button>
       </div>
+
+      <div class="lobby-actions">
+        <button class="btn secondary" type="button" onclick={handleGetLink}>Get link</button>
+        {#if isHost}
+          <button class="btn secondary" type="button" disabled={nextOpenSeatIndex() === null} onclick={handleAddBot}>Add bot</button>
+          {#if tableProjection.players.length >= tableProjection.lobbyConfig.minPlayers}
+            <button class="btn success" disabled={busy || !canStartCurrentImplementation()} onclick={handleStartGame}>Start Game</button>
+          {/if}
+        {/if}
+      </div>
+
+      {#if isHost && tableProjection.players.length >= tableProjection.lobbyConfig.minPlayers && !canStartCurrentImplementation()}
+        <p class="lobby-warning">This build can start only with exactly two human players. Bot and 3-5 player support is configured for later.</p>
+      {/if}
+
+      {#if lobbyMessage}
+        <p class="lobby-message">{lobbyMessage}</p>
+      {/if}
     </div>
   {:else if tableProjection.status === 'game_over'}
     <div class="game-over-panel glass">
@@ -1376,12 +1490,6 @@
     text-align: center;
   }
 
-  .players-list ul {
-    margin: 1rem 0;
-    padding: 0;
-    list-style: none;
-  }
-
   input {
     width: 100%;
     padding: 0.75rem;
@@ -1424,8 +1532,87 @@
 
   .lobby-actions {
     display: flex;
+    flex-wrap: wrap;
     justify-content: center;
     gap: 0.6rem;
+  }
+
+  .lobby-table-wrap {
+    margin-top: 1rem;
+    overflow-x: auto;
+  }
+
+  .lobby-table {
+    width: 100%;
+    border-collapse: collapse;
+    overflow: hidden;
+    border: 1px solid rgba(244, 214, 158, 0.16);
+    border-radius: 8px;
+    text-align: left;
+  }
+
+  .lobby-table th,
+  .lobby-table td {
+    padding: 0.72rem 0.8rem;
+    border-bottom: 1px solid rgba(244, 214, 158, 0.12);
+  }
+
+  .lobby-table thead th {
+    color: rgba(255, 247, 231, 0.72);
+    font-size: 0.76rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .lobby-table tbody tr {
+    background: rgba(255, 247, 231, 0.035);
+  }
+
+  .lobby-table tbody tr.empty-seat {
+    color: rgba(255, 247, 231, 0.5);
+    background: rgba(0, 0, 0, 0.12);
+  }
+
+  .lobby-table tbody tr:last-child th,
+  .lobby-table tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .seat-note {
+    display: inline-block;
+    margin-left: 0.45rem;
+    color: #f8da80;
+    font-size: 0.76rem;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .empty-copy,
+  .spectator-list,
+  .lobby-meta,
+  .lobby-warning,
+  .lobby-message {
+    color: rgba(255, 247, 231, 0.68);
+  }
+
+  .lobby-meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.55rem 1rem;
+    margin: 0.9rem 0 1rem;
+    font-size: 0.86rem;
+  }
+
+  .spectator-list,
+  .lobby-warning,
+  .lobby-message {
+    margin: 0.85rem 0 0;
+    font-size: 0.9rem;
+  }
+
+  .lobby-warning {
+    color: #f8da80;
   }
 
   .game-over-panel {

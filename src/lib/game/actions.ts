@@ -1,6 +1,13 @@
 export type GameCode = string;
 export type PlayerId = string;
 
+export interface LobbyConfig {
+  minPlayers: number;
+  maxPlayers: number;
+  supportedStartHumanPlayers: number;
+  botsPlanned: boolean;
+}
+
 export type GameAction =
 
   | {
@@ -10,6 +17,7 @@ export type GameAction =
       actorId: PlayerId;
       payload: {
         gameCode: GameCode;
+        lobbyConfig?: LobbyConfig;
       };
     }
   | {
@@ -20,6 +28,21 @@ export type GameAction =
       payload: {
         playerId: PlayerId;
         name: string;
+        role?: 'player' | 'spectator';
+        seatIndex?: number;
+        kind?: 'human';
+      };
+    }
+  | {
+      id?: string;
+      type: 'BOT_ADDED';
+      at: number;
+      actorId: PlayerId;
+      payload: {
+        botId: PlayerId;
+        name: string;
+        seatIndex: number;
+        kind: 'bot';
       };
     }
   | {

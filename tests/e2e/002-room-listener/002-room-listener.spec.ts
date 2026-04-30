@@ -29,15 +29,37 @@ test('room listener replays joined player action', async ({ page }, testInfo) =>
     description: 'Joined player is derived from replayed actions',
     verifications: [
       {
-        spec: 'Lobby shows the player count',
+        spec: 'Lobby shows the player table',
         check: async () => {
-          await expect(page.getByText('Players (1)')).toBeVisible();
+          await expect(page.getByRole('table')).toBeVisible();
+          await expect(page.getByText('1 of 5 seats filled')).toBeVisible();
         },
       },
       {
         spec: 'Joined player appears in the room',
         check: async () => {
           await expect(page.getByText('Stefan')).toBeVisible();
+        },
+      },
+    ],
+  });
+
+  await page.getByRole('button', { name: 'Add bot' }).click();
+
+  await tester.step('bot-added', {
+    description: 'Host can reserve a future bot seat',
+    verifications: [
+      {
+        spec: 'Bot occupies the next lobby seat',
+        check: async () => {
+          await expect(page.getByText('Bot 2')).toBeVisible();
+          await expect(page.getByText('Bots are lobby-only for now')).toBeVisible();
+        },
+      },
+      {
+        spec: 'Current implementation does not start with a bot',
+        check: async () => {
+          await expect(page.getByRole('button', { name: 'Start Game' })).toBeDisabled();
         },
       },
     ],

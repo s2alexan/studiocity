@@ -2,11 +2,10 @@
   import { goto } from '$app/navigation';
   import { base } from '$app/paths';
   import { getFirebaseServices } from '$lib/firebase/config';
-  import { createGameCode, isGameCode } from '$lib/game/actions';
+  import { createGameCode } from '$lib/game/actions';
   import { createRoom } from '$lib/game/firestore';
   import { getLocalPlayerId } from '$lib/game/session';
 
-  let joinCode = $state('');
   let name = $state('Player');
   let error = $state('');
   let busy = $state(false);
@@ -30,40 +29,20 @@
     }
   }
 
-  async function joinExistingRoom() {
-    error = '';
-    const normalized = joinCode.trim().toUpperCase();
-    if (!isGameCode(normalized)) {
-      error = 'Enter a four-letter room code.';
-      return;
-    }
-    await goto(`${base}/room/${normalized}`);
-  }
 </script>
 
 <main
   class="screen"
   style={`--cinema-bg: url('${assetPath('/ui/cinema-background.png')}')`}
 >
-  <section class="panel" aria-labelledby="welcome-heading">
-    <img class="title-logo" src={assetPath('/ui/studio-city-title.png')} alt="Studio City" />
-    <h1 id="welcome-heading">Welcome to Studio City</h1>
-    <p class="muted">Create a room or join one by code.</p>
-
+  <section class="panel">
     <label>
-      Player name
+      Name
       <input bind:value={name} autocomplete="name" />
     </label>
 
     <div class="actions">
       <button type="button" disabled={busy} onclick={createNewRoom}>Create room</button>
-      <input
-        aria-label="Room code"
-        maxlength="4"
-        placeholder="ABCD"
-        bind:value={joinCode}
-      />
-      <button class="secondary" type="button" onclick={joinExistingRoom}>Join room</button>
     </div>
 
     {#if error}
@@ -126,28 +105,6 @@
     backdrop-filter: blur(10px);
   }
 
-  .title-logo {
-    display: block;
-    width: min(32rem, 82vw);
-    max-height: 6.2rem;
-    height: auto;
-    margin: -0.8rem auto 0.2rem;
-    object-fit: contain;
-    filter: drop-shadow(0 0.7rem 0.9rem rgba(0, 0, 0, 0.58));
-  }
-
-  h1 {
-    margin: 0;
-    color: #fff7e7;
-    font-size: clamp(1.45rem, 4vw, 2.25rem);
-    line-height: 1.05;
-  }
-
-  .muted {
-    margin: 0.6rem 0 1.2rem;
-    color: rgba(255, 247, 231, 0.72);
-  }
-
   label {
     display: grid;
     gap: 0.35rem;
@@ -175,7 +132,7 @@
 
   .actions {
     display: grid;
-    grid-template-columns: auto minmax(6rem, 1fr) auto;
+    grid-template-columns: 1fr;
     gap: 0.7rem;
     align-items: center;
     margin-top: 1rem;
@@ -200,12 +157,6 @@
   button:disabled {
     opacity: 0.55;
     cursor: not-allowed;
-  }
-
-  .secondary {
-    border: 1px solid rgba(244, 214, 158, 0.16);
-    background: #2f2c28;
-    color: #f8ecd7;
   }
 
   [role='alert'] {

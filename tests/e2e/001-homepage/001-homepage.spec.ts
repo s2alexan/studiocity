@@ -3,17 +3,17 @@ import { TestStepHelper } from '../helpers/test-step-helper';
 
 test('homepage renders', async ({ page }, testInfo) => {
   const tester = new TestStepHelper(page, testInfo);
-  tester.setMetadata('Homepage', 'The Studio City app shell renders the cinema-themed room controls.');
+  tester.setMetadata('Homepage', 'The Studio City app shell renders the minimal room creation controls.');
 
   await page.goto('/');
 
   await tester.step('initial-load', {
-    description: 'Homepage room controls are visible',
+    description: 'Homepage create-room controls are visible',
     verifications: [
       {
-        spec: 'The welcome heading is visible',
+        spec: 'The name field is visible',
         check: async () => {
-          await expect(page.getByRole('heading', { name: 'Welcome to Studio City' })).toBeVisible();
+          await expect(page.getByLabel('Name')).toBeVisible();
         },
       },
       {
@@ -23,9 +23,10 @@ test('homepage renders', async ({ page }, testInfo) => {
         },
       },
       {
-        spec: 'Join room control is available',
+        spec: 'Joining by code is not shown on the homepage',
         check: async () => {
-          await expect(page.getByRole('button', { name: 'Join room' })).toBeVisible();
+          await expect(page.getByRole('button', { name: 'Join room' })).toHaveCount(0);
+          await expect(page.getByLabel('Room code')).toHaveCount(0);
         },
       },
     ],

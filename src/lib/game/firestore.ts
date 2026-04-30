@@ -12,7 +12,14 @@ import {
   type Firestore,
   type Unsubscribe,
 } from 'firebase/firestore';
-import type { GameAction, GameCode, PlayerId, StoredGameAction } from './actions';
+import type { GameAction, GameCode, LobbyConfig, PlayerId, StoredGameAction } from './actions';
+
+export const DEFAULT_LOBBY_CONFIG: LobbyConfig = {
+  minPlayers: 2,
+  maxPlayers: 5,
+  supportedStartHumanPlayers: 2,
+  botsPlanned: true,
+};
 
 export function gameDocPath(gameCode: GameCode) {
   return `game/${gameCode}`;
@@ -44,7 +51,7 @@ export async function createRoom(
     type: 'ROOM_CREATED',
     at: now,
     actorId: playerId,
-    payload: { gameCode },
+    payload: { gameCode, lobbyConfig: DEFAULT_LOBBY_CONFIG },
   } satisfies GameAction);
 
   await joinRoom(db, gameCode, playerId, name);
@@ -77,11 +84,37 @@ export async function joinRoom(
   });
 
   if (!hasJoined) {
+    const occupiedSeats = new Set<number>();
+    let legacyPlayerSeat = 0;
+    for (const actionDoc of existing.docs) {
+      const data = actionDoc.data() as Partial<GameAction>;
+      if (data.type === 'PLAYER_JOINED' && data.payload?.role !== 'spectator') {
+        if (typeof data.payload?.seatIndex === 'number') {
+          occupiedSeats.add(data.payload.seatIndex);
+        } else {
+          occupiedSeats.add(legacyPlayerSeat);
+        }
+        legacyPlayerSeat++;
+      }
+      if (data.type === 'BOT_ADDED' && typeof data.payload?.seatIndex === 'number') {
+        occupiedSeats.add(data.payload.seatIndex);
+      }
+    }
+    const seatIndex = Array.from({ length: DEFAULT_LOBBY_CONFIG.maxPlayers }, (_, index) => index)
+      .find((index) => !occupiedSeats.has(index));
+    const role = seatIndex === undefined ? 'spectator' : 'player';
+
     await addDoc(actionsRef, {
       type: 'PLAYER_JOINED',
       at: Date.now(),
       actorId: playerId,
-      payload: { playerId, name },
+      payload: {
+        playerId,
+        name,
+        role,
+        seatIndex,
+        kind: 'human',
+      },
     } satisfies GameAction);
   }
 }
@@ -114,6 +147,21 @@ export async function claimSeat(db: Firestore, gameCode: GameCode, actorId: Play
     at: Date.now(),
     actorId,
     payload: { seatIndex }
+  } satisfies GameAction);
+}
+
+export async function addBot(db: Firestore, gameCode: GameCode, actorId: PlayerId, seatIndex: number) {
+  const actionsRef = collection(doc(db, 'game', gameCode), 'actions');
+  await addDoc(actionsRef, {
+    type: 'BOT_ADDED',
+    at: Date.now(),
+    actorId,
+    payload: {
+      botId: `bot-${crypto.randomUUID()}`,
+      name: `Bot ${seatIndex + 1}`,
+      seatIndex,
+      kind: 'bot',
+    },
   } satisfies GameAction);
 }
 
