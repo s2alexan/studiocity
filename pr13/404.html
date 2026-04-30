@@ -7,12 +7,38 @@
     <meta name="description" content="Studio City tabletop card game PWA" />
     <link rel="manifest" href="/studiocity/pr13/manifest.webmanifest" />
     <title>Studio City</title>
-    <link href="/studiocity/pr13/_app/immutable/entry/start.CTpHCymR.js" rel="modulepreload">
-		<link href="/studiocity/pr13/_app/immutable/chunks/kCrKOJ8f.js" rel="modulepreload">
+    <script>
+      (() => {
+        const storageKey = 'studio-city-pages-redirect';
+        try {
+          const rawRedirect = sessionStorage.getItem(storageKey);
+          if (!rawRedirect) return;
+
+          const redirect = JSON.parse(rawRedirect);
+          const appBase = String(redirect.appBase ?? '').replace(/\/$/, '');
+          const currentPath = window.location.pathname.replace(/\/$/, '');
+          if (currentPath !== appBase) return;
+
+          sessionStorage.removeItem(storageKey);
+          const route = String(redirect.route ?? '/').startsWith('/')
+            ? String(redirect.route ?? '/')
+            : `/${redirect.route}`;
+          window.history.replaceState(
+            null,
+            document.title,
+            `${appBase}${route}${redirect.search ?? ''}${redirect.hash ?? ''}`,
+          );
+        } catch {
+          sessionStorage.removeItem(storageKey);
+        }
+      })();
+    </script>
+    <link href="/studiocity/pr13/_app/immutable/entry/start.BwrC9r50.js" rel="modulepreload">
+		<link href="/studiocity/pr13/_app/immutable/chunks/CJXfif_4.js" rel="modulepreload">
 		<link href="/studiocity/pr13/_app/immutable/chunks/Biljmsqs.js" rel="modulepreload">
-		<link href="/studiocity/pr13/_app/immutable/chunks/DwRSjmwv.js" rel="modulepreload">
+		<link href="/studiocity/pr13/_app/immutable/chunks/D41ifHpY.js" rel="modulepreload">
 		<link href="/studiocity/pr13/_app/immutable/chunks/BIvDw8mp.js" rel="modulepreload">
-		<link href="/studiocity/pr13/_app/immutable/entry/app.f2kta-Yz.js" rel="modulepreload">
+		<link href="/studiocity/pr13/_app/immutable/entry/app.Cly-Ttw1.js" rel="modulepreload">
 		<link href="/studiocity/pr13/_app/immutable/chunks/CnCiCJlQ.js" rel="modulepreload">
 		<link href="/studiocity/pr13/_app/immutable/chunks/DEnlf8bL.js" rel="modulepreload">
 		<link href="/studiocity/pr13/_app/immutable/chunks/0n4oNYIX.js" rel="modulepreload">
@@ -26,7 +52,7 @@
     <div style="display: contents">
 			<script>
 				{
-					__sveltekit_1o5qkqh = {
+					__sveltekit_1nsskii = {
 						base: "/studiocity/pr13",
 						assets: "/studiocity/pr13"
 					};
@@ -34,8 +60,8 @@
 					const element = document.currentScript.parentElement;
 
 					Promise.all([
-						import("/studiocity/pr13/_app/immutable/entry/start.CTpHCymR.js"),
-						import("/studiocity/pr13/_app/immutable/entry/app.f2kta-Yz.js")
+						import("/studiocity/pr13/_app/immutable/entry/start.BwrC9r50.js"),
+						import("/studiocity/pr13/_app/immutable/entry/app.Cly-Ttw1.js")
 					]).then(([kit, app]) => {
 						kit.start(app, element);
 					});

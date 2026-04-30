@@ -3,44 +3,38 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#111111" />
-    <meta name="description" content="Studio City tabletop card game PWA" />
-    <link rel="manifest" href="/studiocity/manifest.webmanifest" />
     <title>Studio City</title>
-    <link href="/studiocity/_app/immutable/entry/start.DgYYwUzI.js" rel="modulepreload">
-		<link href="/studiocity/_app/immutable/chunks/D-whfwxx.js" rel="modulepreload">
-		<link href="/studiocity/_app/immutable/chunks/Biljmsqs.js" rel="modulepreload">
-		<link href="/studiocity/_app/immutable/chunks/D9KFrnYq.js" rel="modulepreload">
-		<link href="/studiocity/_app/immutable/chunks/BIvDw8mp.js" rel="modulepreload">
-		<link href="/studiocity/_app/immutable/entry/app.DcbFu82t.js" rel="modulepreload">
-		<link href="/studiocity/_app/immutable/chunks/CnCiCJlQ.js" rel="modulepreload">
-		<link href="/studiocity/_app/immutable/chunks/DEnlf8bL.js" rel="modulepreload">
-		<link href="/studiocity/_app/immutable/chunks/0n4oNYIX.js" rel="modulepreload">
-		<link href="/studiocity/_app/immutable/chunks/BnX1NcWq.js" rel="modulepreload">
-		<link href="/studiocity/_app/immutable/chunks/Bq6Rz0r0.js" rel="modulepreload">
-		<link href="/studiocity/_app/immutable/nodes/0.DGCIOh3O.js" rel="modulepreload">
-		
-		<link href="/studiocity/_app/immutable/assets/0.DE1AaY8s.css" rel="stylesheet">
+    <script>
+      (() => {
+        const repoBase = '/studiocity'.replace(/\/$/, '');
+        const path = window.location.pathname;
+        if (!repoBase || !path.startsWith(`${repoBase}/`)) return;
+
+        let route = path.slice(repoBase.length) || '/';
+        let appBase = repoBase;
+        const previewMatch = route.match(/^\/pr\d+(?=\/|$)/);
+        if (previewMatch) {
+          appBase += previewMatch[0];
+          route = route.slice(previewMatch[0].length) || '/';
+        }
+
+        try {
+          sessionStorage.setItem(
+            'studio-city-pages-redirect',
+            JSON.stringify({
+              appBase,
+              route,
+              search: window.location.search,
+              hash: window.location.hash,
+            }),
+          );
+        } catch {
+          // If storage is unavailable, still send the user to the app shell.
+        }
+
+        window.location.replace(`${appBase}/`);
+      })();
+    </script>
   </head>
-  <body data-sveltekit-preload-data="hover">
-    <div style="display: contents">
-			<script>
-				{
-					__sveltekit_d7jnli = {
-						base: "/studiocity",
-						assets: "/studiocity"
-					};
-
-					const element = document.currentScript.parentElement;
-
-					Promise.all([
-						import("/studiocity/_app/immutable/entry/start.DgYYwUzI.js"),
-						import("/studiocity/_app/immutable/entry/app.DcbFu82t.js")
-					]).then(([kit, app]) => {
-						kit.start(app, element);
-					});
-				}
-			</script>
-		</div>
-  </body>
+  <body></body>
 </html>
