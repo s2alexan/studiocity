@@ -118,9 +118,13 @@
     movieRevealTimers = [];
   }
 
+  function cloneProjection(value: GameProjection): GameProjection {
+    return JSON.parse(JSON.stringify(value)) as GameProjection;
+  }
+
   function stageMovieReveal(beforeReveal: GameProjection, afterReveal: GameProjection) {
     clearMovieRevealTimers();
-    stagedTableProjection = structuredClone(beforeReveal);
+    stagedTableProjection = cloneProjection(beforeReveal);
     stagedTableProjection.playedMovies = {};
     stagedTableProjection.selectedMoviePlayers = Object.fromEntries(
       Object.keys(afterReveal.playedMovies).map((playerId) => [playerId, true]),
