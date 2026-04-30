@@ -445,3 +445,12 @@
 - Doubled the market-card deal/flip animation duration while leaving the existing animation speed variable in place for future tuning.
 - Added a presentation-only movie reveal gate in the room UI: after `MOVIES_REVEALED`, the table briefly holds the pre-award state with all selected movie backs visible, then flips the selected movie cards face-up, then releases the awarded box office/review state.
 - Kept this as UI staging only; the event-sourced game actions and Cloud Functions behavior are unchanged.
+
+### Verbatim Prompt
+
+> There is a bug, once all players have selected their movie cards, nothing happens, it won't go onto the next step
+
+### Setup Notes
+
+- Reproduced with animations enabled against the local Firebase emulators. The room page crashed when staging the movie reveal because `structuredClone` cannot clone the Svelte state proxy around the projection.
+- Replaced `structuredClone` with a JSON clone for the plain-data game projection so the reveal timers can run and the UI advances to contract selection.
