@@ -426,3 +426,12 @@
 
 - Reworked market card dealing so the card container moves from the deck while the back overlay and front image perform one coordinated face-down-to-face-up flip.
 - Removed the redundant bottom status notice below the play area; the top status strip remains the single source of visible game status.
+
+### Verbatim Prompt
+
+> The cards still end up face down
+
+### Setup Notes
+
+- Made the deal-animation card-back overlay disappear after the halfway point of the flip so the final resting card cannot remain visually face-down.
+- Fixed the resting CSS state too: because the animation uses `backwards`, the card-back overlay must be hidden in the base style after the animation completes.
