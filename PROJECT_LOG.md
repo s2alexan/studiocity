@@ -402,3 +402,17 @@
 - Replaced size-pulsing active-card animation with a pulsing outline/glow.
 - Added visible flying award-card clones for box office and review award playback, with each award beat taking roughly 1.6 seconds.
 - Changed deal-in animation so market cards start from the deck side and rotate toward face-up placement instead of sliding from the previous card.
+
+### Verbatim Prompt
+
+> - deck dealing animations are better, but remove transparency. I want the cards opaque.
+> - decks still look like single cards, not decks, It's because the bottom cards in the deck are dark grey. You need to stack 10 card back images on top of each other, but each card offset up and to the left by a small amount, with a drop shadow around the entire card. That will now look like a proper deck. It's important that the bottom card in the stack is aligned with the cards that are flipped face-up, because that's the "table". Therefore the top card will end up slightly higher in the y direction than the flipped over cards, which is what helps maintain the illusion of it looking like a stack.
+> - When player 1 chooses a movie card, it should not appear for other players until after they have also chosen their movie card. The right way to think about this is that there is a "your hand" UI frame, and a "other player's face-down movie cards" UI frame. When you see your hand, you can't see any face down movie cards, because that frame isn't visible. Once you select a card, your hand disappears, and is replaced by the other player movie card frame, where you can then see your face down card, and any other player's cards that got selected. And then once everyone has selected, the cards are flipped face-up.
+> - The animations are a mess. Let's fix one step at a time. For this update, just fix two things. One, the proper deck animation flipping over cards at the beginning of the round. Two, the selection of movie cards, and the "your hand" to "face down movie card" part.
+
+### Setup Notes
+
+- Removed the box office/review award animation layer from this PR pass so only market dealing and movie selection transitions are changing.
+- Rebuilt each deck stack from 10 real card-back images, offset up and left from a bottom card that aligns with the face-up card row.
+- Removed opacity fading from the deal animation and added a card-back overlay so each dealt card appears to come off the deck face-down, flip, and land face-up.
+- Changed the played-movie row so it stays hidden while the local player still has their hand, then replaces the hand after local selection and shows only players who have actually selected until the reveal.

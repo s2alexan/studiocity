@@ -20,7 +20,7 @@
   import { store } from '$lib/game/store';
 
   const { data } = $props<{ data: { code: string } }>();
-  const AWARD_STEP_MS = GAME_ANIMATION_SPEED_MS * 1.8;
+  const DECK_LAYER_COUNT = 10;
 
   let name = $state('Player');
   let status = $state('Connecting');
@@ -31,7 +31,6 @@
   let privateData = $state<{ hand: string[]; chosenMovie: string | null } | null>(null);
   let busy = $state(false);
   let animationsDisabled = $state(false);
-  let awardStep = $state(999);
   let contractAwardKey = $state('');
   let pendingSelectedMovieId = $state<string | null>(null);
 
@@ -88,29 +87,6 @@
   });
 
   onDestroy(unsubscribeStore);
-
-  $effect(() => {
-    const key = `${projection.actionCount}:${projection.lastActionType}`;
-    const sequence = buildAwardSequence();
-    contractAwardKey =
-      projection.lastActionType === 'CONTRACT_CHOSEN' ? key : '';
-
-    if (animationsDisabled || projection.lastActionType !== 'MOVIES_REVEALED' || sequence.length === 0) {
-      awardStep = 999;
-      return;
-    }
-
-    awardStep = 0;
-    const timers = sequence.map((_, index) =>
-      window.setTimeout(() => {
-        awardStep = index + 1;
-      }, AWARD_STEP_MS * (index + 1)),
-    );
-
-    return () => {
-      timers.forEach((timer) => window.clearTimeout(timer));
-    };
-  });
 
   $effect(() => {
     if (localPlayerId && projection.playedMovies[localPlayerId]) {
@@ -249,57 +225,6 @@
     return '?';
   }
 
-  function awardOrder(kind: 'boxOfficeRank' | 'reviewRank') {
-    if (!Object.keys(projection.playedMovies).length) return [];
-
-    return [...projection.players].sort((a, b) => {
-      const rankA = getMovieCard(projection.playedMovies[a.id])?.[kind] ?? -1;
-      const rankB = getMovieCard(projection.playedMovies[b.id])?.[kind] ?? -1;
-      return rankB - rankA;
-    });
-  }
-
-  function buildAwardSequence() {
-    const boxOfficeAwards = awardOrder('boxOfficeRank')
-      .map((player, index) => ({
-        type: 'boxOffice' as const,
-        playerId: player.id,
-        cardId: projection.playerStates[player.id]?.boxOffice.at(-1),
-        fromIndex: projection.players.length - 1 - index,
-        toIndex: player.seatIndex,
-      }))
-      .filter((award): award is { type: 'boxOffice'; playerId: PlayerId; cardId: string; fromIndex: number; toIndex: number } => Boolean(award.cardId));
-
-    const reviewAwards = awardOrder('reviewRank')
-      .map((player, index) => ({
-        type: 'review' as const,
-        playerId: player.id,
-        cardId: projection.playerStates[player.id]?.reviews.at(-1),
-        fromIndex: projection.players.length - 1 - index,
-        toIndex: player.seatIndex,
-      }))
-      .filter((award): award is { type: 'review'; playerId: PlayerId; cardId: string; fromIndex: number; toIndex: number } => Boolean(award.cardId));
-
-    return [...boxOfficeAwards, ...reviewAwards];
-  }
-
-  function visibleAwardMarketCards(type: 'boxOffice' | 'review') {
-    const sequence = buildAwardSequence();
-    if (projection.lastActionType !== 'MOVIES_REVEALED' || awardStep >= sequence.length) {
-      return type === 'boxOffice' ? projection.market.boxOffice : projection.market.reviews;
-    }
-
-    return sequence
-      .map((award, index) => ({ ...award, index }))
-      .filter((award) => award.type === type && indexNotYetAbsorbed(award.index))
-      .sort((a, b) => a.fromIndex - b.fromIndex)
-      .map((award) => award.cardId);
-  }
-
-  function indexNotYetAbsorbed(index: number) {
-    return animationsDisabled || index >= awardStep;
-  }
-
   function latestContractAward(playerId: PlayerId, contractId: string) {
     const latestAction = store.getState().game.actions.at(-1);
     return latestAction?.type === 'CONTRACT_CHOSEN' && latestAction.actorId === playerId && latestAction.payload.contractId === contractId
@@ -341,24 +266,13 @@
     );
   }
 
-  function awardCard(award: ReturnType<typeof buildAwardSequence>[number]) {
-    return award.type === 'boxOffice' ? getBoxOfficeCard(award.cardId) : getReviewCard(award.cardId);
+  function deckLayerStyle(index: number) {
+    return `--deck-offset: ${index}`;
   }
 
-  function awardStyle(award: ReturnType<typeof buildAwardSequence>[number]) {
-    const row = award.type === 'boxOffice' ? 0 : 1;
-    return [
-      `--award-from-index: ${award.fromIndex}`,
-      `--award-to-index: ${award.toIndex}`,
-      `--award-row: ${row}`,
-    ].join('; ');
-  }
-
-  const currentAward = $derived(buildAwardSequence()[awardStep] ?? null);
-  const boxOfficeMarketCards = $derived(visibleAwardMarketCards('boxOffice'));
-  const reviewMarketCards = $derived(visibleAwardMarketCards('review'));
+  const localPlayerHasSelected = $derived(Boolean(localPlayerId && playerHasSelectedMovie(localPlayerId)));
   const showPlayedMovies = $derived(
-    projection.players.some((player) => playerHasSelectedMovie(player.id)) ||
+    localPlayerHasSelected ||
       Object.keys(projection.playedMovies).length > 0 ||
       projection.phase === 'contract_auction' ||
       projection.status === 'final_round_complete',
@@ -501,15 +415,22 @@
       <section class="market-area" aria-label="Market">
         <div class="market-row box-office-row">
           <div class="deck-stack">
-            <img class="deck-card" src={deckBackSrc('boxOffice')} alt={deckBackAlt('boxOffice')} />
+            {#each Array(DECK_LAYER_COUNT) as _, layerIndex}
+              <img
+                class="deck-card"
+                style={deckLayerStyle(layerIndex)}
+                src={deckBackSrc('boxOffice')}
+                alt={layerIndex === DECK_LAYER_COUNT - 1 ? deckBackAlt('boxOffice') : ''}
+                aria-hidden={layerIndex === DECK_LAYER_COUNT - 1 ? undefined : 'true'}
+              />
+            {/each}
           </div>
           <div class="market-cards">
-            {#each boxOfficeMarketCards as cId}
+            {#each projection.market.boxOffice as cId}
               {@const c = getBoxOfficeCard(cId)}
               <div
                 class="card box-office dealt-card"
-                class:award-focus={currentAward?.type === 'boxOffice' && currentAward.cardId === cId}
-                style={`--deal-index: ${boxOfficeMarketCards.indexOf(cId)}`}
+                style={`--deal-index: ${projection.market.boxOffice.indexOf(cId)}; --deal-back: url('${deckBackSrc('boxOffice')}')`}
                 aria-label={`${c.bills} bill box office card`}
               >
                 <CardImage card={c} />
@@ -520,15 +441,22 @@
 
         <div class="market-row review-row">
           <div class="deck-stack">
-            <img class="deck-card" src={deckBackSrc('review')} alt={deckBackAlt('review')} />
+            {#each Array(DECK_LAYER_COUNT) as _, layerIndex}
+              <img
+                class="deck-card"
+                style={deckLayerStyle(layerIndex)}
+                src={deckBackSrc('review')}
+                alt={layerIndex === DECK_LAYER_COUNT - 1 ? deckBackAlt('review') : ''}
+                aria-hidden={layerIndex === DECK_LAYER_COUNT - 1 ? undefined : 'true'}
+              />
+            {/each}
           </div>
           <div class="market-cards">
-            {#each reviewMarketCards as cId}
+            {#each projection.market.reviews as cId}
               {@const c = getReviewCard(cId)}
               <div
                 class="card review dealt-card"
-                class:award-focus={currentAward?.type === 'review' && currentAward.cardId === cId}
-                style={`--deal-index: ${reviewMarketCards.indexOf(cId)}`}
+                style={`--deal-index: ${projection.market.reviews.indexOf(cId)}; --deal-back: url('${deckBackSrc('review')}')`}
                 aria-label={`${c.stars} star review card`}
               >
                 <CardImage card={c} />
@@ -539,7 +467,15 @@
 
         <div class="market-row contract-row">
           <div class="deck-stack">
-            <img class="deck-card" src={deckBackSrc('contract')} alt={deckBackAlt('contract')} />
+            {#each Array(DECK_LAYER_COUNT) as _, layerIndex}
+              <img
+                class="deck-card"
+                style={deckLayerStyle(layerIndex)}
+                src={deckBackSrc('contract')}
+                alt={layerIndex === DECK_LAYER_COUNT - 1 ? deckBackAlt('contract') : ''}
+                aria-hidden={layerIndex === DECK_LAYER_COUNT - 1 ? undefined : 'true'}
+              />
+            {/each}
           </div>
           <div class="market-cards">
             {#each projection.market.contracts as cId}
@@ -548,8 +484,7 @@
               <button
                 type="button"
                 class="card contract dealt-card {canPick ? 'pickable' : ''}"
-                class:award-focus={canPick && projection.contractPickOrder[0] === localPlayerId}
-                style={`--deal-index: ${projection.market.contracts.indexOf(cId)}`}
+                style={`--deal-index: ${projection.market.contracts.indexOf(cId)}; --deal-back: url('${deckBackSrc('contract')}')`}
                 disabled={!canPick}
                 aria-label={canPick ? `Choose ${c.title}` : `${c.title} is not available until your contract turn`}
                 onclick={() => handleChooseContract(cId)}
@@ -563,14 +498,6 @@
           </div>
         </div>
       </section>
-
-      {#if currentAward}
-        <div class="award-animation-layer" aria-hidden="true">
-          <div class="card {currentAward.type === 'boxOffice' ? 'box-office' : 'review'} flying-award" style={awardStyle(currentAward)}>
-            <CardImage card={awardCard(currentAward)} />
-          </div>
-        </div>
-      {/if}
 
       <section class="player-boards" aria-label="Player summaries">
         {#each projection.players as player}
@@ -586,19 +513,19 @@
             <div class="stats">
               <span class="stat" aria-label={`${summary.bills} bills`}>
                 <img src={assetPath('/ui/icons/bill.png')} alt="" />
-                <span class:stat-update={currentAward?.type === 'boxOffice' && currentAward.playerId === player.id}>{summary.bills}</span>
+                <span>{summary.bills}</span>
               </span>
               <span class="stat" aria-label={`${summary.stars} stars`}>
                 <img src={assetPath('/ui/icons/star.png')} alt="" />
-                <span class:stat-update={currentAward?.type === 'review' && currentAward.playerId === player.id}>{summary.stars}</span>
+                <span>{summary.stars}</span>
               </span>
               <span class="stat" aria-label={`${summary.loved} loved movies`}>
                 <img src={assetPath('/ui/icons/loved.png')} alt="" />
-                <span class:stat-update={currentAward?.type === 'review' && currentAward.playerId === player.id}>{summary.loved}</span>
+                <span>{summary.loved}</span>
               </span>
               <span class="stat" aria-label={`${summary.blockbusters} blockbusters`}>
                 <img src={assetPath('/ui/icons/blockbuster.png')} alt="" />
-                <span class:stat-update={currentAward?.type === 'boxOffice' && currentAward.playerId === player.id}>{summary.blockbusters}</span>
+                <span>{summary.blockbusters}</span>
               </span>
             </div>
             <ul class="contract-list" aria-label={`${player.name} contracts`}>
@@ -649,7 +576,7 @@
             {@const selectedMovieId = selectedMovieFor(player.id)}
             <div
               class="played-movie-slot"
-              class:active-player={currentAward?.playerId === player.id || projection.contractPickOrder[0] === player.id}
+              class:active-player={projection.contractPickOrder[0] === player.id}
             >
               {#if revealedMovieId}
                 {@const movie = getMovieCard(revealedMovieId)}
@@ -886,42 +813,23 @@
     width: var(--market-card-width);
     aspect-ratio: 7 / 5;
     transform-style: preserve-3d;
-    filter: drop-shadow(0 0.65rem 0.75rem rgba(0, 0, 0, 0.36));
-  }
-
-  .deck-stack::before,
-  .deck-stack::after {
-    position: absolute;
-    inset: 0;
-    content: '';
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    background: rgba(28, 25, 22, 0.95);
-    box-shadow:
-      0.12rem 0.12rem 0 rgba(244, 214, 158, 0.2),
-      0.22rem 0.22rem 0 rgba(20, 18, 16, 0.95),
-      0.34rem 0.34rem 0 rgba(244, 214, 158, 0.16),
-      0.48rem 0.48rem 0 rgba(18, 16, 14, 0.95),
-      0.62rem 0.62rem 0 rgba(244, 214, 158, 0.12),
-      0 0.65rem 1rem rgba(0, 0, 0, 0.28);
-  }
-
-  .deck-stack::before {
-    transform: translate(0.42rem, 0.24rem);
-  }
-
-  .deck-stack::after {
-    transform: translate(0.22rem, 0.12rem);
+    overflow: visible;
   }
 
   .deck-card {
-    position: relative;
-    z-index: 3;
+    position: absolute;
+    inset: 0;
     display: block;
     width: 100%;
     height: 100%;
     object-fit: contain;
-    filter: drop-shadow(0 0.55rem 0.75rem rgba(0, 0, 0, 0.38));
+    transform:
+      translate(
+        calc(var(--deck-offset) * -0.055rem),
+        calc(var(--deck-offset) * -0.045rem)
+      );
+    z-index: calc(var(--deck-offset) + 1);
+    filter: drop-shadow(0 0.42rem 0.42rem rgba(0, 0, 0, 0.34));
   }
 
   .card {
@@ -981,12 +889,29 @@
   }
 
   .dealt-card {
+    position: relative;
+    overflow: hidden;
     animation: deal-from-deck calc(var(--animation-speed) * 0.82) cubic-bezier(0.2, 0.78, 0.22, 1) backwards;
     animation-delay: calc(var(--deal-index, 0) * var(--animation-speed) * 0.16);
     transform-origin: center;
+    transform-style: preserve-3d;
   }
 
-  .award-focus,
+  .dealt-card::before {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    content: '';
+    border-radius: 8px;
+    background-image: var(--deal-back);
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    pointer-events: none;
+    animation: deal-card-back calc(var(--animation-speed) * 0.82) cubic-bezier(0.2, 0.78, 0.22, 1) backwards;
+    animation-delay: calc(var(--deal-index, 0) * var(--animation-speed) * 0.16);
+  }
+
   .played-movie-slot.active-player .played-movie-card {
     z-index: 2;
     outline: 3px solid rgba(246, 212, 127, 0.9);
@@ -1002,10 +927,10 @@
 
   @keyframes deal-from-deck {
     0% {
-      opacity: 0;
+      opacity: 1;
       transform:
         translateX(calc(-1 * ((var(--deal-index, 0) + 1) * (var(--market-card-width) + 0.5rem) + 0.58rem)))
-        translateY(-0.08rem)
+        translateY(calc(-0.4rem - (9 * 0.045rem)))
         rotateY(180deg)
         scale(0.98);
       filter: brightness(0.86);
@@ -1017,6 +942,21 @@
     100% {
       transform: translateX(0) translateY(0) rotateY(0deg) scale(1);
       filter: brightness(1);
+    }
+  }
+
+  @keyframes deal-card-back {
+    0%, 44% {
+      opacity: 1;
+      transform: rotateY(0deg);
+    }
+    55% {
+      opacity: 0;
+      transform: rotateY(90deg);
+    }
+    100% {
+      opacity: 0;
+      transform: rotateY(90deg);
     }
   }
 
@@ -1032,69 +972,6 @@
       box-shadow:
         0 0 0 0.48rem rgba(246, 212, 127, 0),
         0 0 0.9rem rgba(246, 212, 127, 0.74);
-    }
-  }
-
-  .award-animation-layer {
-    position: absolute;
-    inset: 0;
-    z-index: 6;
-    pointer-events: none;
-  }
-
-  .flying-award {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: var(--market-card-width);
-    aspect-ratio: 7 / 5;
-    transform:
-      translate(
-        calc(var(--market-card-width) + 0.58rem + (var(--award-from-index) * (var(--market-card-width) + 0.5rem))),
-        calc(0.5rem + (var(--award-row) * (var(--market-card-width) * 5 / 7 + 0.84rem)))
-      );
-    animation: fly-award-to-player calc(var(--animation-speed) * 1.65) cubic-bezier(0.25, 0.82, 0.25, 1) both;
-  }
-
-  @keyframes fly-award-to-player {
-    0% {
-      opacity: 1;
-      transform:
-        translate(
-          calc(var(--market-card-width) + 0.58rem + (var(--award-from-index) * (var(--market-card-width) + 0.5rem))),
-          calc(0.5rem + (var(--award-row) * (var(--market-card-width) * 5 / 7 + 0.84rem)))
-        )
-        scale(1);
-      filter: brightness(1.15);
-    }
-    18% {
-      transform:
-        translate(
-          calc(var(--market-card-width) + 0.58rem + (var(--award-from-index) * (var(--market-card-width) + 0.5rem))),
-          calc(0.5rem + (var(--award-row) * (var(--market-card-width) * 5 / 7 + 0.84rem)))
-        )
-        translateY(-0.35rem)
-        scale(1.05);
-    }
-    82% {
-      opacity: 1;
-      transform:
-        translate(
-          calc((var(--award-to-index) * ((var(--table-width) - 2.32rem) / 5 + 0.58rem)) + (((var(--table-width) - 2.32rem) / 5 - var(--market-card-width)) / 2)),
-          calc((var(--market-card-width) * 15 / 7) + 2.9rem)
-        )
-        scale(0.72);
-      filter: brightness(1.25);
-    }
-    100% {
-      opacity: 0;
-      transform:
-        translate(
-          calc((var(--award-to-index) * ((var(--table-width) - 2.32rem) / 5 + 0.58rem)) + (((var(--table-width) - 2.32rem) / 5 - var(--market-card-width)) / 2)),
-          calc((var(--market-card-width) * 15 / 7) + 2.9rem)
-        )
-        scale(0.42);
-      filter: brightness(1.45);
     }
   }
 
@@ -1312,27 +1189,6 @@
   .empty-contracts {
     color: rgba(255, 247, 231, 0.42);
     font-style: italic;
-  }
-
-  .stat-update {
-    display: inline-block;
-    animation: stat-pop calc(var(--animation-speed) * 0.8) ease-out both;
-  }
-
-  @keyframes stat-pop {
-    0% {
-      transform: scale(1);
-      color: inherit;
-    }
-    35% {
-      transform: scale(1.42);
-      color: #fff1aa;
-      text-shadow: 0 0 0.6rem rgba(246, 212, 127, 0.8);
-    }
-    100% {
-      transform: scale(1);
-      color: inherit;
-    }
   }
 
   .played-movies {

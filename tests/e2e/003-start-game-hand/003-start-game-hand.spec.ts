@@ -39,6 +39,9 @@ async function normalizeRandomGameContent(page: Page) {
       element.classList.remove('pickable');
       element.style.opacity = '0.72';
     });
+    document.querySelectorAll<HTMLElement>('.played-movie-slot.active-player').forEach((element) => {
+      element.classList.remove('active-player');
+    });
     document.querySelectorAll('.auction-notice').forEach((element) => {
       replaceTextNode(element, 'Contract selection is active.');
     });
