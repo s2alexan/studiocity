@@ -382,3 +382,23 @@
 - Added a played-movie row beneath player boards: the hand disappears after local selection, the local selected card appears there, and revealed round movies flip into face-up cards.
 - Added slow visual sequencing hooks for award focus, stat updates, contract receipt, market dealing, and taller-looking deck stacks while keeping recorded game actions limited to the existing event-sourced user/system actions.
 - Updated E2E screenshot normalization for the new played-movie row and regenerated affected screenshots.
+
+### Verbatim Prompt
+
+> Issues with this PR:
+> - The box office, review, and contract stacks look like single face-down cards, not stacks.
+> - When one player chooses a movie card, their hand disappears (this is correct), and the face-down movie card appears under their player info box (which is correct). But then that player's movie card flips (incorrect), and also there is some kind of scroll bar appearing in a frame holding these face-down movie cards (incorrect). Also I also saw another player's face-down movie card appear under their info box - but that player hadn't yet selected their movie card! This is incorrect. A player's face-down, selected, movie card should appear under their player info box, for them, and for all other players, at the same time. Only when all players have selected their movie cards should all players' movie cards be flipped face-up, for everyone, at the same time.
+> - There are no animations showing the box office and review cards moving into player info boxes. Either you did not implement it, or it's broken. I slowed animations to 10% in Chrome and it still happened instantly. As an example, I would want the box office and review cards to take 1-2 seconds each to move towards their player info boxes. Are all the animations running locally? Did you need to push anything to Firebase? Remember that has to happen explicitely, and locally on my mac.
+> - The pulse animation is annoying. I do want "active" cards, to look selected, with an outline around them that is pulsing in its glow. But do not make the card itself pulse in size.
+> - Everything feels a little bit laggy. When I click, it can take some time to react - but then I still don't see any animations, everything just jumps to the next state. I want everything to feel very snappy when I click on something, but then for the animations to start instantly and play smoothly and slowly.
+> - You did not implement the animations properly for dealing the box office, review, and contract cards at the beginning of the round. The cards slide, fading into existence, from the previous card - not from the deck. I want to see a single card come off the deck, and be flipped onto its face-up side, as it moves over to its correct place.
+
+### Setup Notes
+
+- Added a public `MOVIE_SELECTED` action that records only the user-input fact that a player selected a movie, without exposing the movie identity.
+- Updated the selected-movie row to show only players who have actually selected, keep all selected cards face-down until `MOVIES_REVEALED`, and remove the horizontal scrollbar.
+- Added an immediate optimistic local selected-card state so clicking a movie hides the hand and shows the selected back right away while the function call completes.
+- Reworked deck styling to expose more layered card edges.
+- Replaced size-pulsing active-card animation with a pulsing outline/glow.
+- Added visible flying award-card clones for box office and review award playback, with each award beat taking roughly 1.6 seconds.
+- Changed deal-in animation so market cards start from the deck side and rotate toward face-up placement instead of sliding from the previous card.

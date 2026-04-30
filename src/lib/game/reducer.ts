@@ -30,6 +30,7 @@ export interface GameProjection {
     reviews: string[];
     contracts: string[];
   };
+  selectedMoviePlayers: Record<PlayerId, boolean>;
   playedMovies: Record<PlayerId, string>;
   unreleasedMovies: Record<PlayerId, string>;
   playerStates: Record<PlayerId, PlayerState>;
@@ -52,6 +53,7 @@ export const initialProjection: GameProjection = {
   round: 1,
   phase: 'selection',
   market: { boxOffice: [], reviews: [], contracts: [] },
+  selectedMoviePlayers: {},
   playedMovies: {},
   unreleasedMovies: {},
   playerStates: {},
@@ -174,8 +176,16 @@ function replay(actions: StoredGameAction[]): GameProjection {
           break;
         }
 
+        case 'MOVIE_SELECTED': {
+          if (action.payload.round === projection.round) {
+            projection.selectedMoviePlayers[action.actorId] = true;
+          }
+          break;
+        }
+
         case 'MOVIES_REVEALED': {
           projection.playedMovies = action.payload.choices;
+          projection.selectedMoviePlayers = {};
           
           // Compute forced awards
           // Sort players by Box Office rank of their played movie
@@ -249,6 +259,7 @@ function replay(actions: StoredGameAction[]): GameProjection {
               } else {
                 projection.round++;
                 projection.phase = 'selection';
+                projection.selectedMoviePlayers = {};
                 const rng = lcg(projection.seed);
                 setupRoundMarket(projection, rng);
               }

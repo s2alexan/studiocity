@@ -133,6 +133,14 @@ export const submitMovie = onCall(callableOptions, async (request) => {
     const newHand = hand.filter(m => m !== movieId);
     transaction.update(privateRef, { hand: newHand, chosenMovie: movieId });
 
+    const selectedActionRef = gameRef.collection('actions').doc();
+    transaction.set(selectedActionRef, {
+      type: 'MOVIE_SELECTED',
+      at: Date.now(),
+      actorId,
+      payload: { round },
+    });
+
     if (allSubmitted) {
       if (round === 5) {
         unreleasedMovies[actorId] = newHand[0];
@@ -151,7 +159,7 @@ export const submitMovie = onCall(callableOptions, async (request) => {
       const actionRef = gameRef.collection('actions').doc();
       transaction.set(actionRef, {
         type: 'MOVIES_REVEALED',
-        at: Date.now(),
+        at: Date.now() + 1,
         actorId: 'SYSTEM',
         payload: { round, choices },
       });
@@ -160,7 +168,7 @@ export const submitMovie = onCall(callableOptions, async (request) => {
         const finalActionRef = gameRef.collection('actions').doc();
         transaction.set(finalActionRef, {
           type: 'FINAL_MOVIES_REVEALED',
-          at: Date.now() + 1,
+          at: Date.now() + 2,
           actorId: 'SYSTEM',
           payload: { round, unreleasedMovies },
         });

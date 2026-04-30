@@ -44,6 +44,15 @@ export type GameAction =
     }
   | {
       id?: string;
+      type: 'MOVIE_SELECTED';
+      at: number;
+      actorId: PlayerId;
+      payload: {
+        round: number;
+      };
+    }
+  | {
+      id?: string;
       type: 'MOVIES_REVEALED';
       at: number;
       actorId: PlayerId; // usually the "SYSTEM" or the last player who submitted
