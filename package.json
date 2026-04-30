@@ -7,7 +7,7 @@
     "dev": "bun --bun vite dev --host 127.0.0.1 --port 5173",
     "dev:e2e": "VITE_USE_FIREBASE_EMULATORS=true bun --bun vite dev --host 127.0.0.1 --port 5173",
     "dev:e2e:emulated": "node scripts/run-emulated-dev.mjs",
-    "build": "bun --bun vite build",
+    "build": "bun --bun vite build && node scripts/ensure-spa-entrypoints.mjs",
     "build:functions": "cd functions && bun install --frozen-lockfile && bun run build",
     "generate:cards": "node scripts/generate-card-data.mjs",
     "preview": "bun --bun vite preview --host 127.0.0.1 --port 4173",
