@@ -221,7 +221,7 @@ test('started game shows the local player hand', async ({ browser, page }, testI
   );
 
   await page.goto('/');
-  await page.getByLabel('Player name').fill('Host');
+  await page.getByLabel('Name').fill('Host');
   await page.getByRole('button', { name: 'Create room' }).click();
   await normalizeRoomCodeText(page);
 
@@ -247,7 +247,7 @@ test('started game shows the local player hand', async ({ browser, page }, testI
   await guestPage.getByLabel('Player name').fill('Guest');
   await guestPage.getByRole('button', { name: 'Join Game' }).click();
 
-  await expect(page.getByText('Players (2)')).toBeVisible();
+  await expect(page.getByText('2 of 5 seats filled')).toBeVisible();
   await page.getByRole('button', { name: 'Start Game' }).click();
 
   const movieTitles = MOVIE_DECK.map((movie) => movie.title);

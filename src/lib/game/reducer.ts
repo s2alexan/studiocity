@@ -1,5 +1,5 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type { GameAction, GameCode, PlayerId, StoredGameAction } from './actions';
+import type { GameAction, GameCode, LobbyConfig, PlayerId, StoredGameAction } from './actions';
 import { getBoxOfficeCard, getContractCard, getMovieCard, getReviewCard, BOX_OFFICE_DECK, REVIEW_DECK, CONTRACT_DECK } from './cards';
 import { contractStatus } from './player-summary';
 
@@ -7,6 +7,12 @@ export interface Player {
   id: PlayerId;
   name: string;
   seatIndex: number;
+  kind: 'human' | 'bot';
+}
+
+export interface Spectator {
+  id: PlayerId;
+  name: string;
 }
 
 export type GameStatus = 'lobby' | 'playing' | 'final_round_complete' | 'game_over';
@@ -22,6 +28,8 @@ export interface PlayerState {
 export interface GameProjection {
   gameCode: GameCode | null;
   players: Player[];
+  spectators: Spectator[];
+  lobbyConfig: LobbyConfig;
   status: GameStatus;
   round: number;
   phase: RoundPhase;
@@ -49,6 +57,13 @@ export interface GameState {
 export const initialProjection: GameProjection = {
   gameCode: null,
   players: [],
+  spectators: [],
+  lobbyConfig: {
+    minPlayers: 2,
+    maxPlayers: 5,
+    supportedStartHumanPlayers: 2,
+    botsPlanned: true,
+  },
   status: 'lobby',
   round: 1,
   phase: 'selection',
@@ -149,13 +164,39 @@ function replay(actions: StoredGameAction[]): GameProjection {
       switch (action.type) {
         case 'ROOM_CREATED':
           projection.gameCode = action.payload.gameCode;
+          projection.lobbyConfig = action.payload.lobbyConfig ?? projection.lobbyConfig;
           break;
           
         case 'PLAYER_JOINED': {
           const exists = projection.players.some(p => p.id === action.payload.playerId);
-          if (!exists) {
-            projection.players.push({ id: action.payload.playerId, name: action.payload.name, seatIndex: projection.players.length });
+          const isSpectator = action.payload.role === 'spectator';
+          const spectatorExists = projection.spectators.some(p => p.id === action.payload.playerId);
+          if (isSpectator && !exists && !spectatorExists) {
+            projection.spectators.push({ id: action.payload.playerId, name: action.payload.name });
+          } else if (!exists && !spectatorExists) {
+            projection.players.push({
+              id: action.payload.playerId,
+              name: action.payload.name,
+              seatIndex: action.payload.seatIndex ?? projection.players.length,
+              kind: action.payload.kind ?? 'human',
+            });
             projection.playerStates[action.payload.playerId] = {
+              boxOffice: [], reviews: [], contracts: [], score: 0
+            };
+          }
+          break;
+        }
+
+        case 'BOT_ADDED': {
+          const exists = projection.players.some(p => p.id === action.payload.botId);
+          if (!exists) {
+            projection.players.push({
+              id: action.payload.botId,
+              name: action.payload.name,
+              seatIndex: action.payload.seatIndex,
+              kind: 'bot',
+            });
+            projection.playerStates[action.payload.botId] = {
               boxOffice: [], reviews: [], contracts: [], score: 0
             };
           }

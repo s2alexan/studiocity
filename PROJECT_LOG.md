@@ -454,3 +454,18 @@
 
 - Reproduced with animations enabled against the local Firebase emulators. The room page crashed when staging the movie reveal because `structuredClone` cannot clone the Svelte state proxy around the projection.
 - Replaced `structuredClone` with a JSON clone for the plain-data game projection so the reveal timers can run and the UI advances to contract selection.
+
+### Verbatim Prompt
+
+> Now, I want a new lobby. This new lobby will support bots, and 2-5 players, but I don't yet want you implementing bots or 2-5 players. We will add those later. However in the lobby you should design it such that later, when I want to add bots and different numbers of players, the game configuration already supports that.
+> - Initial home page shows only "name" field, "create room" button, and nothing else. No joining by code.
+> - When create room clicked, then the game shows a table with 5 rows, one for each player. The first one is the player who created the room. And then there should be a button for "get link", which is a link to join the game. This can be the exact same URL format you are using to join games now! But the user just sends the URL to their friend, and when they click the link, they appear in the table as another player. There should also be a button for "add bot", which will populate the next available row in the table with a bot. If too many people click the link they can just be added as spectators, not part of the table, not playing the game. If there are 2-5 players, then the player who created the room has a button to start the game.
+> - Right now, the lobby should fill in the table if extra people join, or if the user adds bots. But when the game starts, it should only support 2 human players. However store all the game configuration in some way so that when we add that functionality later, it's set up properly and you don't have to re-write all the lobby code.
+
+### Setup Notes
+
+- Simplified the homepage to only a name field and create-room button; joining now happens exclusively via room links.
+- Added replayable lobby configuration to `ROOM_CREATED` and new seating metadata on `PLAYER_JOINED`, with five configured seats, spectator overflow, and a future-facing `BOT_ADDED` action.
+- Reworked the lobby UI into a five-row player table with host-only get-link, add-bot, and start controls.
+- Kept the current game-start path restricted to exactly two human players, while preserving bot and 3-5 player lobby data for later implementation.
+- Updated Firestore rules and E2E coverage for the new lobby table and bot-reservation behavior.

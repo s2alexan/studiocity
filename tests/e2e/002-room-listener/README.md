@@ -16,6 +16,15 @@ The room route listens to Firestore emulator actions and renders derived Redux s
 
 ### Verifications
 
-- [x] Lobby shows the player count
+- [x] Lobby shows the player table
 - [x] Joined player appears in the room
+
+## Host can reserve a future bot seat
+
+![Host can reserve a future bot seat](./screenshots/002-bot-added.png)
+
+### Verifications
+
+- [x] Bot occupies the next lobby seat
+- [x] Current implementation does not start with a bot
 

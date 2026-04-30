@@ -37,6 +37,10 @@ export const startGame = onCall(callableOptions, async (request) => {
     throw new HttpsError('invalid-argument', 'Expected a four-letter room code.');
   }
 
+  if (!Array.isArray(playerIds) || playerIds.length !== 2) {
+    throw new HttpsError('failed-precondition', 'Studio City currently starts only with exactly two human players.');
+  }
+
   const db = getFirestore();
   const gameRef = db.collection('game').doc(gameCode);
 
